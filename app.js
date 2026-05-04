@@ -13,7 +13,8 @@ let userData = {
     totalVisits: 0,
     referralCode: '',
     referredBy: null,
-    pendingBonuses: [] // Бонусы, ожидающие подтверждения
+    pendingBonuses: [],
+    isVerified: false
 };
 
 const PRICES = {
@@ -27,47 +28,131 @@ const EXTRAS = { instructor: 2000, rescue: 2500 };
 document.addEventListener('DOMContentLoaded', () => {
     loadUserData();
 
+    // Генерация реферального кода при первом запуске
     if (!userData.referralCode) {
         userData.referralCode = 'OW' + Math.random().toString(36).substr(2, 6).toUpperCase();
+        saveUserData();
     }
 
+    // Проверка реферала из URL
     const ref = new URLSearchParams(window.location.search).get('ref');
     if (ref && !userData.referredBy) {
         userData.referredBy = ref;
+        saveUserData();
     }
 
-    // УБРАНА ВЕЧНАЯ ЗАГРУЗКА — сразу показываем экран
-    document.getElementById('splash')?.classList.remove('active');
+    // Показываем загрузку на 1.5 секунды, затем нужный экран
+    setTimeout(() => {
+        document.getElementById('loading').classList.remove('active');
 
-    if (!userData.name) {
-        document.getElementById('register').classList.add('active');
-    } else {
-        document.getElementById('main').classList.add('active');
-        updateProfile();
-    }
+        if (!userData.name || !userData.isVerified) {
+            // Не зарегистрирован или не подтверждён — показываем регистрацию
+            document.getElementById('register').classList.add('active');
+        } else {
+            // Уже зарегистрирован — показываем главный экран
+            document.getElementById('main').classList.add('active');
+            updateProfile();
+        }
+    }, 1500);
 
     initTimeSlots();
     setupEventListeners();
     updatePrice();
 });
 
-// ==================== РЕГИСТРАЦИЯ ====================
+// ==================== РЕГИСТРАЦИЯ И SMS ====================
+let tempPhone = '';
+let tempName = '';
+let smsCodeGenerated = '';
+
 document.getElementById('registerForm').addEventListener('submit', (e) => {
     e.preventDefault();
-    userData.name = document.getElementById('regName').value.trim();
-    userData.phone = document.getElementById('regPhone').value.trim();
+    tempName = document.getElementById('regName').value.trim();
+    tempPhone = document.getElementById('regPhone').value.trim();
+
+    if (!tempName || !tempPhone) {
+        tg.showAlert('Заполните все поля');
+        return;
+    }
+
+    // Генерируем код (в реальности — отправляем через SMS-шлюз)
+    smsCodeGenerated = generateSMSCode();
+
+    // Показываем экран подтверждения
+    document.getElementById('register').classList.remove('active');
+    document.getElementById('verify').classList.add('active');
+    document.getElementById('verifyPhone').textContent = tempPhone;
+
+    // Для теста — показываем код в alert (в продакшене — отправляем SMS)
+    console.log('SMS код:', smsCodeGenerated);
+
+    // Отправляем код в Telegram бот для тестирования
+    sendToBot('📱 Код подтверждения SMS', {
+        Телефон: tempPhone,
+        Код: smsCodeGenerated,
+        Примечание: 'В продакшене код отправляется через SMS-шлюз'
+    });
+
+    tg.showAlert('Код отправлен! Для теста код: ' + smsCodeGenerated);
+});
+
+// Подтверждение SMS-кода
+document.getElementById('verifyForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const enteredCode = document.getElementById('smsCode').value.trim();
+
+    if (enteredCode !== smsCodeGenerated) {
+        tg.showAlert('Неверный код! Попробуйте ещё раз.');
+        return;
+    }
+
+    // Успешная верификация
+    userData.name = tempName;
+    userData.phone = tempPhone;
+    userData.isVerified = true;
     saveUserData();
 
-    document.getElementById('register').classList.remove('active');
+    document.getElementById('verify').classList.remove('active');
     document.getElementById('main').classList.add('active');
     updateProfile();
 
-    sendToBot('🆕 Регистрация', {
+    sendToBot('🆕 Новая регистрация', {
         Имя: userData.name,
         Телефон: userData.phone,
         Telegram: tg.initDataUnsafe?.user?.username || 'Не указан'
     });
+
+    tg.showAlert('✅ Регистрация завершена!');
 });
+
+function resendCode() {
+    smsCodeGenerated = generateSMSCode();
+    console.log('Новый SMS код:', smsCodeGenerated);
+    tg.showAlert('Новый код: ' + smsCodeGenerated);
+}
+
+function generateSMSCode() {
+    return Math.floor(1000 + Math.random() * 9000).toString(); // 4 цифры
+}
+
+// ==================== ВЫХОД ====================
+function logout() {
+    tg.showConfirm('Выйти из аккаунта?', (confirmed) => {
+        if (confirmed) {
+            // Очищаем данные
+            userData = {
+                name: '', phone: '', visits: [], bonusPoints: 0,
+                freeHours: 0, spinsAvailable: 0, totalVisits: 0,
+                referralCode: '', referredBy: null, pendingBonuses: [], isVerified: false
+            };
+            localStorage.removeItem('openWatersUser');
+
+            document.getElementById('main').classList.remove('active');
+            document.getElementById('register').classList.add('active');
+            document.getElementById('registerForm').reset();
+        }
+    });
+}
 
 // ==================== НАВИГАЦИЯ ====================
 function setupEventListeners() {
@@ -95,13 +180,17 @@ function updateProfile() {
     document.getElementById('freeHours').textContent = userData.freeHours;
     document.getElementById('refLink').value = `https://t.me/openwaters_sup_bot?start=${userData.referralCode}`;
 
-    // Прогресс 5+1 (1 бесплатный час)
-    const visitsForProgress = userData.totalVisits % 6;
-    const progress = visitsForProgress === 0 && userData.totalVisits > 0 ? 100 : (visitsForProgress / 5) * 100;
+    // Прогресс 5+1
+    const visitsMod = userData.totalVisits % 6;
+    const progress = visitsMod === 0 && userData.totalVisits > 0 ? 100 : (visitsMod / 5) * 100;
     document.getElementById('progressFill').style.width = Math.min(progress, 100) + '%';
 
     document.querySelectorAll('.step').forEach((step, i) => {
-        step.classList.toggle('active', i < visitsForProgress || (visitsForProgress === 0 && userData.totalVisits > 0 && i === 5));
+        if (visitsMod === 0 && userData.totalVisits > 0) {
+            step.classList.toggle('active', i === 5); // Все 5 сделаны, подарок активен
+        } else {
+            step.classList.toggle('active', i < visitsMod);
+        }
     });
 
     updateHistory();
@@ -116,11 +205,14 @@ function updateHistory() {
     }
 
     el.innerHTML = userData.visits.slice().reverse().map(v => {
-        const statusBadge = v.status === 'pending' 
-            ? '<span class="badge badge-pending">⏳ На подтверждении</span>'
-            : v.isFree 
-                ? '<span class="badge badge-free">🎁 1ч бесплатно</span>'
-                : '<span class="badge badge-paid">' + v.price.toLocaleString() + ' ₽</span>';
+        let badge = '';
+        if (v.status === 'pending') {
+            badge = '<span class="badge badge-pending">⏳ На подтверждении</span>';
+        } else if (v.isFree) {
+            badge = '<span class="badge badge-free">🎁 1ч бесплатно</span>';
+        } else {
+            badge = '<span class="badge badge-paid">' + v.price.toLocaleString() + ' ₽</span>';
+        }
 
         return `
             <div class="history-item">
@@ -128,7 +220,7 @@ function updateHistory() {
                     <div class="date">${v.date.split(' ')[0]}</div>
                     <div class="info">${v.duration}ч · ${v.supCount} SUP</div>
                 </div>
-                ${statusBadge}
+                ${badge}
             </div>
         `;
     }).join('');
@@ -141,7 +233,7 @@ function updateWheelState() {
     btn.style.opacity = userData.spinsAvailable <= 0 ? '0.5' : '1';
 }
 
-// ==================== КОЛЕСО УДАЧИ (ИСПРАВЛЕНО) ====================
+// ==================== КОЛЕСО УДАЧИ (ИСПРАВЛЕННОЕ) ====================
 let isSpinning = false;
 let currentRotation = 0;
 
@@ -158,98 +250,93 @@ function spinWheel() {
     resultEl.textContent = '';
     resultEl.style.background = 'rgba(255,255,255,0.9)';
 
-    // Призы с правильными индексами (0-7, по часовой стрелке сверху)
+    // Призы: индекс = позиция в массиве, соответствует CSS-сегменту
     const prizes = [
-        { name: '50 баллов', value: 50, type: 'points', index: 0 },      // 0° — верхний сегмент
-        { name: 'Скидка 10%', value: 10, type: 'discount', index: 1 },   // 45°
-        { name: '100 баллов', value: 100, type: 'points', index: 2 },     // 90°
-        { name: 'Бесплатный час!', value: 1, type: 'freeHour', index: 3 }, // 135°
-        { name: 'Скидка 20%', value: 20, type: 'discount', index: 4 },   // 180°
-        { name: '200 баллов', value: 200, type: 'points', index: 5 },    // 225°
-        { name: 'Мерч 🧢', value: 1, type: 'merch', index: 6 },          // 270°
-        { name: 'Попробуй ещё', value: 0, type: 'none', index: 7 }      // 315°
+        { name: '50 баллов', value: 50, type: 'points' },      // 0 — верхний сегмент (0-45°)
+        { name: 'Скидка 10%', value: 10, type: 'discount' },   // 1 — 45-90°
+        { name: '100 баллов', value: 100, type: 'points' },    // 2 — 90-135°
+        { name: 'Бесплатный час!', value: 1, type: 'freeHour' }, // 3 — 135-180°
+        { name: 'Скидка 20%', value: 20, type: 'discount' },  // 4 — 180-225°
+        { name: '200 баллов', value: 200, type: 'points' },   // 5 — 225-270°
+        { name: 'Мерч 🧢', value: 1, type: 'merch' },         // 6 — 270-315°
+        { name: 'Попробуй ещё', value: 0, type: 'none' }      // 7 — 315-360°
     ];
 
-    // Случайный выбор приза
-    const selectedPrize = prizes[Math.floor(Math.random() * prizes.length)];
+    // Случайный выбор
+    const prizeIndex = Math.floor(Math.random() * prizes.length);
+    const prize = prizes[prizeIndex];
 
-    // Вычисляем угол для приземления на выбранный сегмент
-    // Указатель вверху (0°), колесо крутится ПРОТИВ часовой стрелки
-    // Чтобы сегмент оказался сверху, нужно повернуть колесо на: 360 - (index * 45) + случайное смещение внутри сегмента
-    const baseAngle = 360 - (selectedPrize.index * 45);
-    const randomOffset = 10 + Math.random() * 25; // случайное смещение внутри сегмента (10°-35° от края)
-    const fullRotations = 5 + Math.floor(Math.random() * 3); // 5-7 полных оборотов
+    // Расчёт угла вращения
+    // Указатель вверху (0°). Колесо крутится ПРОТИВ часовой стрелки (отрицательный угол)
+    // Чтобы сегмент с индексом prizeIndex оказался сверху:
+    // Нужно повернуть так, чтобы начало сегмента (prizeIndex * 45°) оказалось на 0°
+    // Угол = -(360 - prizeIndex * 45) = -(360 - prizeIndex * 45)
+    // Добавляем полные обороты (5-7) и случайное смещение внутри сегмента (5-40°)
 
-    const targetAngle = (fullRotations * 360) + baseAngle + randomOffset;
+    const fullSpins = 5 + Math.floor(Math.random() * 3); // 5-7 оборотов
+    const segmentOffset = 5 + Math.random() * 35; // Смещение внутри сегмента (5°-40° от начала)
+    const targetAngle = (fullSpins * 360) + (prizeIndex * 45) + segmentOffset;
+
     currentRotation = targetAngle;
-
     wheel.style.transform = `rotate(-${targetAngle}deg)`;
 
     setTimeout(() => {
         isSpinning = false;
+        handlePrize(prize);
+    }, 5200);
+}
 
-        // Начисление приза
-        let msg = '';
-        let bgColor = '#E8F5E9';
+function handlePrize(prize) {
+    const resultEl = document.getElementById('wheelResult');
+    let msg = '';
+    let bgColor = '#E8F5E9';
 
-        switch(selectedPrize.type) {
-            case 'points':
-                // Баллы добавляются в pending (ждут подтверждения админом)
-                userData.pendingBonuses.push({
-                    type: 'points',
-                    value: selectedPrize.value,
-                    date: new Date().toISOString(),
-                    status: 'pending'
-                });
-                msg = `🎉 ${selectedPrize.name}! Ожидают подтверждения: +${selectedPrize.value} баллов`;
-                break;
+    switch(prize.type) {
+        case 'points':
+            userData.pendingBonuses.push({
+                type: 'points', value: prize.value,
+                date: new Date().toISOString(), status: 'pending'
+            });
+            msg = `🎉 ${prize.name}! Ожидают подтверждения: +${prize.value} баллов`;
+            break;
 
-            case 'discount':
-                userData.pendingBonuses.push({
-                    type: 'discount',
-                    value: selectedPrize.value,
-                    date: new Date().toISOString(),
-                    status: 'pending'
-                });
-                msg = `🎉 Скидка ${selectedPrize.value}%! Активируется администратором`;
-                break;
+        case 'discount':
+            userData.pendingBonuses.push({
+                type: 'discount', value: prize.value,
+                date: new Date().toISOString(), status: 'pending'
+            });
+            msg = `🎉 Скидка ${prize.value}%! Активируется администратором`;
+            break;
 
-            case 'freeHour':
-                userData.pendingBonuses.push({
-                    type: 'freeHour',
-                    value: 1,
-                    date: new Date().toISOString(),
-                    status: 'pending'
-                });
-                msg = `🎉 Бесплатный час! Администратор активирует при следующем визите`;
-                break;
+        case 'freeHour':
+            userData.pendingBonuses.push({
+                type: 'freeHour', value: 1,
+                date: new Date().toISOString(), status: 'pending'
+            });
+            msg = `🎉 Бесплатный час! Активируется при следующем визите`;
+            break;
 
-            case 'merch':
-                msg = `🎉 Мерч Open Waters! Покажите это окно на точке 🧢`;
-                bgColor = '#FFF3E0';
-                break;
+        case 'merch':
+            msg = `🎉 Мерч Open Waters! Покажите это окно на точке 🧢`;
+            bgColor = '#FFF3E0';
+            break;
 
-            case 'none':
-                msg = `😅 Попробуйте в следующий раз! Удача близко`;
-                bgColor = '#FFEBEE';
-                break;
-        }
+        case 'none':
+            msg = `😅 Попробуйте в следующий раз!`;
+            bgColor = '#FFEBEE';
+            break;
+    }
 
-        resultEl.textContent = msg;
-        resultEl.style.background = bgColor;
+    resultEl.textContent = msg;
+    resultEl.style.background = bgColor;
+    saveUserData();
 
-        saveUserData();
-        updateProfile();
-
-        sendToBot('🎰 Колесо удачи', {
-            Пользователь: userData.name,
-            Телефон: userData.phone,
-            Выигрыш: selectedPrize.name,
-            Тип: selectedPrize.type,
-            Статус: 'Ожидает подтверждения'
-        });
-
-    }, 5200); // 5.2 секунды = время анимации + небольшой запас
+    sendToBot('🎰 Колесо удачи', {
+        Пользователь: userData.name,
+        Телефон: userData.phone,
+        Выигрыш: prize.name,
+        Тип: prize.type
+    });
 }
 
 // ==================== СЧЁТЧИК SUP ====================
@@ -290,15 +377,13 @@ function updatePrice() {
     if (instructor) extrasPrice += EXTRAS.instructor * duration;
     if (rescue) extrasPrice += EXTRAS.rescue * duration;
 
-    // Проверка бесплатного часа (6-е посещение = 1 час бесплатно)
+    // 6-е посещение = 1 час бесплатно
     const isSixthVisit = (userData.totalVisits + 1) % 6 === 0;
     let freeHourDiscount = 0;
 
     if (isSixthVisit && duration >= 1) {
-        // Стоимость 1 часа для 1 SUP
         const hourPrice = isWeekend ? PRICES.weekend[1] : PRICES.weekday[1];
         freeHourDiscount = hourPrice * count;
-
         document.getElementById('freeHourRow').style.display = 'flex';
         document.getElementById('freeHourDiscount').textContent = '-' + freeHourDiscount.toLocaleString() + ' ₽';
     } else {
@@ -321,7 +406,7 @@ function initTimeSlots() {
     document.getElementById('bookDate').min = new Date().toISOString().split('T')[0];
 }
 
-// ==================== БРОНИРОВАНИЕ ====================
+// ==================== БРОНИРОВАНИЕ (ИСПРАВЛЕННОЕ) ====================
 function handleBooking(e) {
     e.preventDefault();
 
@@ -333,64 +418,61 @@ function handleBooking(e) {
     const rescue = document.getElementById('extraRescue').checked;
     const notes = document.getElementById('bookNotes').value;
 
-    const totalText = document.getElementById('priceTotal').textContent;
-    const total = parseInt(totalText.replace(/\s/g, '').replace('₽', ''));
+    if (!date || !time) {
+        tg.showAlert('Выберите дату и время');
+        return;
+    }
 
     const isWeekend = [0, 6].includes(new Date(date).getDay());
     const isSixthVisit = (userData.totalVisits + 1) % 6 === 0;
 
-    // Расчёт скидки за бесплатный час
+    // Расчёт цены
+    const p = isWeekend ? PRICES.weekend : PRICES.weekday;
+    let supPrice = 0;
+    if (duration <= 4) {
+        supPrice = p[duration] * count;
+    } else {
+        supPrice = (p[4] + (duration - 4) * p.extra) * count;
+    }
+
+    let extrasPrice = 0;
+    if (instructor) extrasPrice += EXTRAS.instructor * duration;
+    if (rescue) extrasPrice += EXTRAS.rescue * duration;
+
     let freeHourDiscount = 0;
     if (isSixthVisit && duration >= 1) {
         const hourPrice = isWeekend ? PRICES.weekend[1] : PRICES.weekday[1];
         freeHourDiscount = hourPrice * count;
     }
 
-    const bookingData = {
+    const total = Math.max(0, supPrice + extrasPrice - freeHourDiscount);
+
+    // Создаём объект бронирования
+    const booking = {
         date: `${date} ${time}`,
-        duration,
+        duration: duration,
         supCount: count,
-        instructor,
-        rescue,
-        notes,
+        instructor: instructor,
+        rescue: rescue,
+        notes: notes,
         price: total,
         isFree: isSixthVisit,
-        freeHourDiscount,
-        status: 'pending', // Ожидает подтверждения администратором
-        userName: userData.name,
-        userPhone: userData.phone,
-        telegramId: tg.initDataUnsafe?.user?.id || 'unknown'
+        freeHourDiscount: freeHourDiscount,
+        status: 'pending',
+        timestamp: new Date().toISOString()
     };
 
-    // Добавляем в историю как "ожидает подтверждения"
-    userData.visits.push(bookingData);
-    userData.totalVisits++;
+    // Добавляем в историю (НЕ увеличиваем totalVisits — это делает админ при подтверждении)
+    userData.visits.push(booking);
 
-    if (isSixthVisit) {
-        userData.freeHours++;
-    }
-
-    // +1 прокрутка колеса (даётся сразу, но баллы из колеса — только после подтверждения)
+    // +1 прокрутка колеса (даётся за создание заявки)
     userData.spinsAvailable++;
-
-    // Бонусы за бронирование НЕ начисляются автоматически — только после подтверждения
-    // Они добавляются в pendingBonuses
-    const pendingBonus = Math.floor(total * 0.1);
-    if (pendingBonus > 0) {
-        userData.pendingBonuses.push({
-            type: 'booking',
-            value: pendingBonus,
-            date: new Date().toISOString(),
-            status: 'pending',
-            bookingDate: bookingData.date
-        });
-    }
 
     saveUserData();
     updateProfile();
 
     // Отправка в бот
-    sendToBot('📅 НОВАЯ ЗАЯВКА (требует подтверждения)', {
+    sendToBot('📅 НОВАЯ ЗАЯВКА', {
         '👤 Имя': userData.name,
         '📱 Телефон': userData.phone,
         '📅 Дата': `${date} в ${time}`,
@@ -401,48 +483,63 @@ function handleBooking(e) {
         '📝 Пожелания': notes || 'Нет',
         '💰 Сумма': `${total.toLocaleString()} ₽`,
         '🎁 Бонус': isSixthVisit ? `1 час бесплатно (-${freeHourDiscount.toLocaleString()} ₽)` : 'Нет',
-        '⏳ Статус': 'ОЖИДАЕТ ПОДТВЕРЖДЕНИЯ'
+        '⏳ Статус': 'ОЖИДАЕТ ПОДТВЕРЖДЕНИЯ АДМИНОМ'
     });
 
+    // Показываем alert
     tg.showAlert(
         isSixthVisit 
             ? '🎉 Заявка отправлена! У вас 1 час бесплатно! Администратор подтвердит бронирование.'
-            : '✅ Заявка отправлена! Администратор подтвердит бронирование и начислит бонусы.'
+            : '✅ Заявка отправлена! Администратор подтвердит бронирование.'
     );
 
+    // Сброс формы
     document.getElementById('bookingForm').reset();
     document.getElementById('supCount').textContent = '1';
     updatePrice();
 }
 
-// ==================== ПОДТВЕРЖДЕНИЕ БОНУСОВ (для администратора) ====================
-// Эта функция вызывается, когда админ подтверждает посещение через бота
-function confirmVisit(visitIndex) {
+// ==================== ПОДТВЕРЖДЕНИЕ АДМИНОМ ====================
+// Эту функцию вызывает админ через бота
+function adminConfirmVisit(visitIndex) {
     const visit = userData.visits[visitIndex];
-    if (!visit || visit.status !== 'pending') return;
+    if (!visit || visit.status !== 'pending') return false;
 
     visit.status = 'confirmed';
+    userData.totalVisits++; // Увеличиваем счётчик только при подтверждении
 
-    // Начисляем бонусы, которые были в ожидании
-    const relatedBonuses = userData.pendingBonuses.filter(
-        b => b.status === 'pending' && 
-        (b.bookingDate === visit.date || !b.bookingDate)
+    if (visit.isFree) {
+        userData.freeHours++;
+    }
+
+    // Начисляем бонусы за бронирование (10% от суммы)
+    if (!visit.isFree && visit.price > 0) {
+        const bonus = Math.floor(visit.price * 0.1);
+        userData.bonusPoints += bonus;
+    }
+
+    // Начисляем ожидающие бонусы из колеса
+    const pendingPoints = userData.pendingBonuses.filter(
+        b => b.status === 'pending' && b.type === 'points'
     );
+    pendingPoints.forEach(b => {
+        b.status = 'confirmed';
+        userData.bonusPoints += b.value;
+    });
 
-    relatedBonuses.forEach(bonus => {
-        bonus.status = 'confirmed';
-        if (bonus.type === 'points') {
-            userData.bonusPoints += bonus.value;
-        } else if (bonus.type === 'freeHour') {
-            userData.freeHours += bonus.value;
-        }
-        // discount и merch обрабатываются отдельно
+    // Начисляем ожидающие бесплатные часы
+    const pendingHours = userData.pendingBonuses.filter(
+        b => b.status === 'pending' && b.type === 'freeHour'
+    );
+    pendingHours.forEach(b => {
+        b.status = 'confirmed';
+        userData.freeHours += b.value;
     });
 
     saveUserData();
     updateProfile();
 
-    tg.showAlert('✅ Посещение подтверждено! Бонусы начислены.');
+    return true;
 }
 
 // ==================== РЕФЕРАЛКА ====================
@@ -463,7 +560,6 @@ function shareRef() {
 function showCorporate() { 
     document.getElementById('corporateModal').classList.add('active'); 
 }
-
 function closeModal() { 
     document.getElementById('corporateModal').classList.remove('active'); 
 }
@@ -476,19 +572,24 @@ function saveUserData() {
 function loadUserData() {
     const saved = localStorage.getItem('openWatersUser');
     if (saved) {
-        const parsed = JSON.parse(saved);
-        userData = { ...userData, ...parsed };
-        // Миграция старых данных
-        if (!userData.pendingBonuses) userData.pendingBonuses = [];
-        if (!userData.freeHours) userData.freeHours = userData.freeSupCount || 0;
+        try {
+            const parsed = JSON.parse(saved);
+            userData = { ...userData, ...parsed };
+            // Миграция старых данных
+            if (userData.freeSupCount && !userData.freeHours) {
+                userData.freeHours = userData.freeSupCount;
+            }
+        } catch(e) {
+            console.error('Error loading data', e);
+        }
     }
 }
 
 function sendToBot(title, data) {
     const payload = {
         type: 'booking',
-        title,
-        data,
+        title: title,
+        data: data,
         user: {
             name: userData.name,
             phone: userData.phone,
@@ -497,19 +598,9 @@ function sendToBot(title, data) {
         timestamp: new Date().toISOString()
     };
 
-    tg.sendData(JSON.stringify(payload));
-}
-
-// ==================== ДЛЯ АДМИНА: обработка подтверждения из бота ====================
-// Когда админ нажимает "Подтвердить" в Telegram, бот отправляет callback
-// Это можно обработать через tg.onEvent('mainButtonClicked') или через web_app_data
-
-// Обработка данных от бота (если админ отправляет команду подтверждения)
-if (tg.initDataUnsafe?.start_param?.startsWith('confirm_')) {
-    const visitId = tg.initDataUnsafe.start_param.replace('confirm_', '');
-    // Найти и подтвердить визит
-    const visitIndex = userData.visits.findIndex(v => v.date === visitId);
-    if (visitIndex !== -1) {
-        confirmVisit(visitIndex);
+    try {
+        tg.sendData(JSON.stringify(payload));
+    } catch(e) {
+        console.log('Telegram WebApp not available for sendData');
     }
 }
