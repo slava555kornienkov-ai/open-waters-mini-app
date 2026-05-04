@@ -11,12 +11,21 @@
 </head>
 <body>
     <div id="app">
+        <!-- ЭКРАН ЗАГРУЗКИ (короткий, 1.5 сек) -->
+        <div id="loading" class="screen active">
+            <div class="loading-content">
+                <div class="logo">🌊</div>
+                <h1>Open Waters</h1>
+                <div class="loader"></div>
+            </div>
+        </div>
+
         <!-- РЕГИСТРАЦИЯ -->
-        <div id="register" class="screen active">
+        <div id="register" class="screen">
             <div class="card">
                 <div class="logo">🌊</div>
                 <h2>Добро пожаловать!</h2>
-                <p class="subtitle">Зарегистрируйтесь, чтобы получать бонусы</p>
+                <p class="subtitle">Зарегистрируйтесь один раз</p>
                 <form id="registerForm">
                     <div class="input-group">
                         <label>Ваше имя</label>
@@ -24,9 +33,27 @@
                     </div>
                     <div class="input-group">
                         <label>Номер телефона</label>
-                        <input type="tel" id="regPhone" placeholder="+7 (999) 000-00-00" required autocomplete="tel">
+                        <input type="tel" id="regPhone" placeholder="+7 (999) 000-00-00" required autocomplete="tel" maxlength="18">
                     </div>
-                    <button type="submit" class="btn-primary">Начать приключение</button>
+                    <button type="submit" class="btn-primary">Получить код</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- ПОДТВЕРЖДЕНИЕ SMS -->
+        <div id="verify" class="screen">
+            <div class="card">
+                <div class="logo">📱</div>
+                <h2>Подтверждение</h2>
+                <p class="subtitle">Введите код из SMS</p>
+                <form id="verifyForm">
+                    <div class="input-group">
+                        <label>Код подтверждения</label>
+                        <input type="text" id="smsCode" placeholder="1234" required maxlength="4" inputmode="numeric">
+                    </div>
+                    <p class="hint">Код отправлен на <span id="verifyPhone"></span></p>
+                    <button type="submit" class="btn-primary">Подтвердить</button>
+                    <button type="button" class="btn-text" onclick="resendCode()">Отправить код повторно</button>
                 </form>
             </div>
         </div>
@@ -96,25 +123,27 @@
                     </div>
                     <button class="btn-share" onclick="shareRef()">📤 Поделиться</button>
                 </div>
+
+                <button class="btn-logout" onclick="logout()">🚪 Выйти</button>
             </div>
 
-            <!-- КОЛЕСО УДАЧИ -->
+            <!-- КОЛЕСО УДАЧИ (CSS-версия, надёжная) -->
             <div id="tab-wheel" class="tab-content">
                 <div class="wheel-section">
                     <h3>🎰 Колесо удачи</h3>
                     <p id="spinsLeft">Осталось прокруток: 0</p>
 
-                    <div class="wheel-wrapper">
+                    <div class="wheel-outer">
                         <div class="wheel-pointer">▼</div>
-                        <div class="wheel" id="wheel">
-                            <div class="wheel-item" data-index="0"><span>50 баллов</span></div>
-                            <div class="wheel-item" data-index="1"><span>Скидка 10%</span></div>
-                            <div class="wheel-item" data-index="2"><span>100 баллов</span></div>
-                            <div class="wheel-item" data-index="3"><span>Бесплатный час</span></div>
-                            <div class="wheel-item" data-index="4"><span>Скидка 20%</span></div>
-                            <div class="wheel-item" data-index="5"><span>200 баллов</span></div>
-                            <div class="wheel-item" data-index="6"><span>Мерч 🧢</span></div>
-                            <div class="wheel-item" data-index="7"><span>Попробуй ещё</span></div>
+                        <div class="wheel-inner" id="wheel">
+                            <div class="slice" data-index="0"><span>50 баллов</span></div>
+                            <div class="slice" data-index="1"><span>Скидка<br>10%</span></div>
+                            <div class="slice" data-index="2"><span>100 баллов</span></div>
+                            <div class="slice" data-index="3"><span>Бесплатный<br>час</span></div>
+                            <div class="slice" data-index="4"><span>Скидка<br>20%</span></div>
+                            <div class="slice" data-index="5"><span>200 баллов</span></div>
+                            <div class="slice" data-index="6"><span>Мерч 🧢</span></div>
+                            <div class="slice" data-index="7"><span>Попробуй<br>ещё</span></div>
                         </div>
                         <div class="wheel-center">🌊</div>
                     </div>
