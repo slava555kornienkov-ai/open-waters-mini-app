@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Open Waters — Аренда SUP в Строгино</title>
+    <title>Open Waters</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="app">
-        <!-- Экран загрузки -->
+        <!-- ЗАСТАВКА -->
         <div id="splash" class="screen active">
             <div class="splash-content">
                 <div class="logo">🌊</div>
@@ -19,13 +19,12 @@
             </div>
         </div>
 
-        <!-- Экран регистрации -->
+        <!-- РЕГИСТРАЦИЯ -->
         <div id="register" class="screen">
             <div class="card">
                 <div class="logo">🌊</div>
                 <h2>Добро пожаловать!</h2>
                 <p class="subtitle">Зарегистрируйтесь, чтобы получать бонусы</p>
-                
                 <form id="registerForm">
                     <div class="input-group">
                         <label>Ваше имя</label>
@@ -40,9 +39,8 @@
             </div>
         </div>
 
-        <!-- Главный экран -->
+        <!-- ГЛАВНЫЙ ЭКРАН -->
         <div id="main" class="screen">
-            <!-- Шапка -->
             <div class="header">
                 <div class="header-info">
                     <h1>Open Waters</h1>
@@ -51,14 +49,13 @@
                 <div class="user-avatar" id="userAvatar">👤</div>
             </div>
 
-            <!-- Навигация -->
             <div class="nav-tabs">
                 <button class="nav-tab active" data-tab="profile">👤 Профиль</button>
                 <button class="nav-tab" data-tab="wheel">🎰 Колесо</button>
                 <button class="nav-tab" data-tab="book">📅 Бронь</button>
             </div>
 
-            <!-- Вкладка Профиль -->
+            <!-- ПРОФИЛЬ -->
             <div id="tab-profile" class="tab-content active">
                 <div class="stats-grid">
                     <div class="stat-card">
@@ -75,7 +72,6 @@
                     </div>
                 </div>
 
-                <!-- Прогресс 5+1 -->
                 <div class="progress-section">
                     <h3>🎯 Программа лояльности</h3>
                     <p>5 посещений = 6-е бесплатно</p>
@@ -92,7 +88,6 @@
                     </div>
                 </div>
 
-                <!-- История -->
                 <div class="history-section">
                     <h3>📋 История посещений</h3>
                     <div id="visitHistory" class="history-list">
@@ -100,24 +95,22 @@
                     </div>
                 </div>
 
-                <!-- Реферальная ссылка -->
                 <div class="referral-section">
                     <h3>🎁 Приведи друга</h3>
                     <p>+500 бонусов за каждого друга</p>
                     <div class="referral-box">
-                        <input type="text" id="refLink" readonly value="">
+                        <input type="text" id="refLink" readonly>
                         <button class="btn-copy" onclick="copyRefLink()">📋</button>
                     </div>
                     <button class="btn-share" onclick="shareRef()">📤 Поделиться</button>
                 </div>
             </div>
 
-            <!-- Вкладка Колесо удачи -->
+            <!-- КОЛЕСО УДАЧИ -->
             <div id="tab-wheel" class="tab-content">
                 <div class="wheel-section">
                     <h3>🎰 Колесо удачи</h3>
                     <p id="spinsLeft">Осталось прокруток: 0</p>
-                    
                     <div class="wheel-container">
                         <div class="wheel-pointer">▼</div>
                         <div class="wheel" id="wheel">
@@ -131,33 +124,26 @@
                             <div class="wheel-segment" style="--i:7"><span>Попробуй ещё</span></div>
                         </div>
                     </div>
-                    
-                    <button class="btn-primary btn-wheel" id="spinBtn" onclick="spinWheel()">
-                        🎲 Крутить
-                    </button>
-                    
+                    <button class="btn-primary btn-wheel" id="spinBtn" onclick="spinWheel()">🎲 Крутить</button>
                     <div id="wheelResult" class="wheel-result"></div>
                 </div>
             </div>
 
-            <!-- Вкладка Бронирование -->
+            <!-- БРОНИРОВАНИЕ -->
             <div id="tab-book" class="tab-content">
                 <div class="booking-section">
                     <h3>📅 Бронирование SUP</h3>
-                    
                     <form id="bookingForm">
                         <div class="input-group">
                             <label>Дата</label>
                             <input type="date" id="bookDate" required>
                         </div>
-
                         <div class="input-group">
                             <label>Время начала</label>
                             <select id="bookTime" required>
                                 <option value="">Выберите время</option>
                             </select>
                         </div>
-
                         <div class="input-group">
                             <label>Длительность</label>
                             <select id="bookDuration" required>
@@ -168,7 +154,6 @@
                                 <option value="5">5+ часов</option>
                             </select>
                         </div>
-
                         <div class="input-group">
                             <label>Количество SUP</label>
                             <div class="counter">
@@ -229,12 +214,9 @@
                             </ul>
                         </div>
 
-                        <button type="submit" class="btn-primary btn-book">
-                            💳 Забронировать и оплатить
-                        </button>
+                        <button type="submit" class="btn-primary btn-book">📩 Отправить заявку</button>
                     </form>
 
-                    <!-- Корпоративы -->
                     <div class="corporate-section">
                         <h4>🏢 Корпоративное мероприятие?</h4>
                         <p>Аренда площадки от 2 000 ₽/час</p>
@@ -244,7 +226,7 @@
             </div>
         </div>
 
-        <!-- Модальное окно корпоративов -->
+        <!-- МОДАЛЬНОЕ ОКНО -->
         <div id="corporateModal" class="modal">
             <div class="modal-content">
                 <span class="close" onclick="closeModal()">&times;</span>
@@ -253,7 +235,7 @@
                 <h4>Включено:</h4>
                 <ul>
                     <li>Полностью арендованная площадка</li>
-                    <li>Выдача и приём SUP-бордов (ротация каждый час)</li>
+                    <li>Выдача и приём SUP-бордов</li>
                     <li>Помощь в экипировке</li>
                 </ul>
                 <h4>Дополнительно:</h4>
