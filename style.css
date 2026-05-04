@@ -400,80 +400,90 @@ html, body {
 .btn-copy { padding: 12px 14px; background: var(--primary-light); border: none; border-radius: 10px; font-size: 16px; cursor: pointer; flex-shrink: 0; }
 .btn-share { width: 100%; padding: 14px; background: linear-gradient(135deg, #66BB6A 0%, #43A047 100%); color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; }
 
-/* ===== КОЛЕСО УДАЧИ (CSS-ONLY, НАДЁЖНОЕ) ===== */
+/* ===== КОЛЕСО УДАЧИ (КРАСИВОЕ) ===== */
 .wheel-section { text-align: center; padding: 8px 0; }
 .wheel-section h3 { font-size: 18px; color: var(--primary-dark); font-weight: 700; margin-bottom: 4px; }
 #spinsLeft { color: var(--text-light); font-size: 14px; margin-bottom: 20px; font-weight: 500; }
 
-/* Внешний контейнер */
-.wheel-outer {
+.wheel-container {
     position: relative;
-    width: 280px;
-    height: 280px;
+    width: 300px;
+    height: 300px;
     margin: 0 auto 24px;
 }
 
 /* Указатель */
 .wheel-pointer {
     position: absolute;
-    top: -6px;
+    top: -8px;
     left: 50%;
     transform: translateX(-50%);
-    font-size: 24px;
+    font-size: 28px;
     color: var(--danger);
-    z-index: 20;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    z-index: 30;
+    filter: drop-shadow(0 3px 6px rgba(239, 83, 80, 0.4));
     pointer-events: none;
+    animation: pointerPulse 2s ease-in-out infinite;
 }
 
-/* Внутреннее колесо */
-.wheel-inner {
+@keyframes pointerPulse {
+    0%, 100% { transform: translateX(-50%) scale(1); }
+    50% { transform: translateX(-50%) scale(1.15); }
+}
+
+/* Колесо */
+.wheel {
     width: 100%;
     height: 100%;
     border-radius: 50%;
     position: relative;
     overflow: hidden;
-    border: 4px solid white;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.15), inset 0 0 0 2px rgba(255,255,255,0.5);
+    border: 6px solid white;
+    box-shadow: 
+        0 8px 32px rgba(0, 131, 143, 0.2),
+        0 2px 8px rgba(0,0,0,0.1),
+        inset 0 0 20px rgba(0,0,0,0.05);
     transition: transform 5s cubic-bezier(0.1, 0.7, 0.1, 1);
     background: white;
 }
 
-/* Сегменты — используем conic-gradient для точности */
-.wheel-inner::before {
+/* Фон колеса — градиентные секторы */
+.wheel::before {
     content: '';
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
     border-radius: 50%;
     background: conic-gradient(
-        var(--primary) 0deg 45deg,
+        from 0deg,
+        #26C6DA 0deg 45deg,
         #E0F7FA 45deg 90deg,
-        var(--primary-light) 90deg 135deg,
+        #80DEEA 90deg 135deg,
         #B2EBF2 135deg 180deg,
-        var(--primary) 180deg 225deg,
+        #4DD0E1 180deg 225deg,
         #E0F7FA 225deg 270deg,
-        var(--primary-light) 270deg 315deg,
-        #B2EBF2 315deg 360deg
+        #26C6DA 270deg 315deg,
+        #80DEEA 315deg 360deg
     );
     z-index: 1;
 }
 
-/* Белые линии-разделители */
-.wheel-inner::after {
+/* Белые разделители */
+.wheel::after {
     content: '';
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
     border-radius: 50%;
-    background: 
-        linear-gradient(0deg, transparent 49.5%, white 49.5%, white 50.5%, transparent 50.5%),
-        linear-gradient(45deg, transparent 49.5%, white 49.5%, white 50.5%, transparent 50.5%),
-        linear-gradient(90deg, transparent 49.5%, white 49.5%, white 50.5%, transparent 50.5%),
-        linear-gradient(135deg, transparent 49.5%, white 49.5%, white 50.5%, transparent 50.5%);
+    background:
+        repeating-conic-gradient(
+            from 0deg,
+            transparent 0deg 44deg,
+            rgba(255,255,255,0.8) 44deg 45deg
+        );
     z-index: 2;
 }
 
-/* Текст на сегментах */
-.slice {
+/* Секторы с текстом */
+.wheel-slice {
     position: absolute;
     width: 50%;
     height: 50%;
@@ -484,47 +494,61 @@ html, body {
     display: flex;
     align-items: flex-start;
     justify-content: center;
-    padding-top: 18px;
+    padding-top: 20px;
     pointer-events: none;
 }
 
-.slice:nth-child(1) { transform: rotate(0deg); }
-.slice:nth-child(2) { transform: rotate(45deg); }
-.slice:nth-child(3) { transform: rotate(90deg); }
-.slice:nth-child(4) { transform: rotate(135deg); }
-.slice:nth-child(5) { transform: rotate(180deg); }
-.slice:nth-child(6) { transform: rotate(225deg); }
-.slice:nth-child(7) { transform: rotate(270deg); }
-.slice:nth-child(8) { transform: rotate(315deg); }
+.wheel-slice:nth-child(1) { transform: rotate(0deg); }
+.wheel-slice:nth-child(2) { transform: rotate(45deg); }
+.wheel-slice:nth-child(3) { transform: rotate(90deg); }
+.wheel-slice:nth-child(4) { transform: rotate(135deg); }
+.wheel-slice:nth-child(5) { transform: rotate(180deg); }
+.wheel-slice:nth-child(6) { transform: rotate(225deg); }
+.wheel-slice:nth-child(7) { transform: rotate(270deg); }
+.wheel-slice:nth-child(8) { transform: rotate(315deg); }
 
-.slice span {
+.slice-content {
     transform: rotate(22.5deg);
-    font-size: 11px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.slice-icon {
+    font-size: 20px;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.1));
+}
+
+.slice-text {
+    font-size: 10px;
     font-weight: 800;
     color: var(--primary-dark);
     text-align: center;
-    width: 70px;
+    width: 60px;
     line-height: 1.2;
     text-shadow: 0 1px 2px rgba(255,255,255,0.9);
 }
 
-/* Центр */
+/* Центр колеса */
 .wheel-center {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 52px;
-    height: 52px;
+    width: 60px;
+    height: 60px;
     background: white;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 26px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    font-size: 32px;
+    box-shadow: 
+        0 4px 16px rgba(0,0,0,0.15),
+        inset 0 0 0 3px var(--primary-light);
     z-index: 10;
-    border: 3px solid var(--primary-light);
+    border: 4px solid white;
 }
 
 .btn-wheel { max-width: 200px; margin: 0 auto 12px; }
@@ -570,6 +594,40 @@ html, body {
 .extra-info { flex: 1; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .extra-price { font-weight: 700; color: var(--primary-dark); white-space: nowrap; }
 
+/* БОНУСЫ */
+.bonus-section {
+    background: linear-gradient(135deg, rgba(38, 198, 218, 0.1) 0%, rgba(178, 235, 242, 0.3) 100%);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 16px;
+    border: 2px solid var(--primary-light);
+}
+
+.bonus-section h4 { 
+    font-size: 13px; 
+    color: var(--primary-dark); 
+    margin-bottom: 10px; 
+    text-transform: uppercase; 
+    font-weight: 700; 
+}
+
+.bonus-label { 
+    background: white; 
+    margin-bottom: 0; 
+}
+
+.bonus-hint { 
+    font-size: 12px; 
+    color: var(--text-light); 
+    margin-top: 8px; 
+    text-align: center;
+}
+
+.bonus-hint span { 
+    font-weight: 700; 
+    color: var(--primary-dark); 
+}
+
 .price-calc { background: linear-gradient(135deg, var(--primary-light) 0%, rgba(255,255,255,0.8) 100%); border-radius: 14px; padding: 16px; margin: 18px 0; }
 .price-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 14px; }
 .price-row.total { border-top: 2px solid var(--primary); margin-top: 8px; padding-top: 10px; font-size: 18px; font-weight: 800; color: var(--primary-dark); }
@@ -586,7 +644,7 @@ html, body {
 .corporate-section h4 { color: var(--primary-dark); margin-bottom: 4px; font-weight: 700; }
 .corporate-section p { font-size: 14px; color: var(--text-light); margin-bottom: 12px; }
 
-/* МОДАЛКА */
+/* МОДАЛКИ */
 .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
 .modal.active { display: flex; }
 
@@ -603,6 +661,42 @@ html, body {
 .modal-content ul li::before { content: '✓'; position: absolute; left: 0; color: var(--success); font-weight: 700; }
 .corporate-note { text-align: center; color: var(--text-light); font-size: 13px; margin: 16px 0; font-style: italic; }
 
+/* ОПЛАТА */
+.payment-content { text-align: center; }
+.payment-details {
+    background: linear-gradient(135deg, var(--primary-light) 0%, rgba(255,255,255,0.9) 100%);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.payment-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 15px; }
+.payment-row.total { border-top: 2px solid var(--primary); margin-top: 10px; padding-top: 12px; font-size: 20px; font-weight: 800; color: var(--primary-dark); }
+
+.payment-methods { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+
+.btn-payment {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: white;
+    border: 2px solid var(--primary-light);
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+}
+
+.btn-payment span { font-size: 24px; }
+.btn-payment:active { background: var(--primary-light); border-color: var(--primary); }
+
+.btn-cash { background: rgba(102, 187, 106, 0.1); border-color: rgba(102, 187, 106, 0.3); color: var(--success); }
+.btn-cash:active { background: rgba(102, 187, 106, 0.2); }
+
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--primary-light); border-radius: 3px; }
@@ -614,8 +708,10 @@ html, body {
 @media (max-width: 360px) {
     .stat-value { font-size: 18px; }
     .stat-label { font-size: 9px; }
-    .wheel-outer { width: 240px; height: 240px; }
-    .slice span { font-size: 9px; width: 60px; }
+    .wheel-container { width: 260px; height: 260px; }
+    .slice-icon { font-size: 16px; }
+    .slice-text { font-size: 9px; width: 50px; }
+    .wheel-center { width: 50px; height: 50px; font-size: 24px; }
     .nav-tab { font-size: 12px; padding: 8px 4px; }
 }
 
