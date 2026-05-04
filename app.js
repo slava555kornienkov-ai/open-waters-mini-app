@@ -14,7 +14,8 @@ let userData = {
     referralCode: '',
     referredBy: null,
     pendingBonuses: [],
-    isVerified: false
+    isVerified: false,
+    userId: null  // Уникальный ID для восстановления аккаунта
 };
 
 const PRICES = {
@@ -28,11 +29,17 @@ const EXTRAS = { instructor: 2000, rescue: 2500 };
 document.addEventListener('DOMContentLoaded', () => {
     loadUserData();
 
-    // Генерация реферального кода при первом запуске
+    // Маска телефона
+    setupPhoneMask();
+
+    // Генерация реферального кода и userId при первом запуске
     if (!userData.referralCode) {
         userData.referralCode = 'OW' + Math.random().toString(36).substr(2, 6).toUpperCase();
-        saveUserData();
     }
+    if (!userData.userId) {
+        userData.userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
+    }
+    saveUserData();
 
     // Проверка реферала из URL
     const ref = new URLSearchParams(window.location.search).get('ref');
@@ -41,15 +48,13 @@ document.addEventListener('DOMContentLoaded', () => {
         saveUserData();
     }
 
-    // Показываем загрузку на 1.5 секунды, затем нужный экран
+    // Показываем загрузку, затем нужный экран
     setTimeout(() => {
         document.getElementById('loading').classList.remove('active');
 
         if (!userData.name || !userData.isVerified) {
-            // Не зарегистрирован или не подтверждён — показываем регистрацию
             document.getElementById('register').classList.add('active');
         } else {
-            // Уже зарегистрирован — показываем главный экран
             document.getElementById('main').classList.add('active');
             updateProfile();
         }
@@ -59,6 +64,51 @@ document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
     updatePrice();
 });
+
+// ==================== МАСКА ТЕЛЕФОНА +7 (999) 999-99-99 ====================
+function setupPhoneMask() {
+    const phoneInput = document.getElementById('regPhone');
+    if (!phoneInput) return;
+
+    phoneInput.addEventListener('input', (e) => {
+        let value = e.target.value.replace(/\D/g, '');
+
+        // Убираем лишнюю 7 в начале если пользователь ввёл +7
+        if (value.startsWith('7') && value.length > 1) {
+            value = value.substring(1);
+        }
+        if (value.startsWith('8') && value.length > 1) {
+            value = value.substring(1);
+        }
+
+        let formatted = '+7';
+
+        if (value.length > 0) {
+            formatted += ' (' + value.substring(0, 3);
+        }
+        if (value.length >= 3) {
+            formatted += ')';
+        }
+        if (value.length > 3) {
+            formatted += ' ' + value.substring(3, 6);
+        }
+        if (value.length > 6) {
+            formatted += '-' + value.substring(6, 8);
+        }
+        if (value.length > 8) {
+            formatted += '-' + value.substring(8, 10);
+        }
+
+        e.target.value = formatted;
+    });
+
+    // При фокусе ставим курсор в конец
+    phoneInput.addEventListener('focus', () => {
+        if (!phoneInput.value) {
+            phoneInput.value = '+7 ';
+        }
+    });
+}
 
 // ==================== РЕГИСТРАЦИЯ И SMS ====================
 let tempPhone = '';
@@ -70,23 +120,35 @@ document.getElementById('registerForm').addEventListener('submit', (e) => {
     tempName = document.getElementById('regName').value.trim();
     tempPhone = document.getElementById('regPhone').value.trim();
 
-    if (!tempName || !tempPhone) {
-        tg.showAlert('Заполните все поля');
+    if (!tempName || !tempPhone || tempPhone.length < 18) {
+        tg.showAlert('Заполните все поля корректно');
         return;
     }
 
-    // Генерируем код (в реальности — отправляем через SMS-шлюз)
+    // Проверяем, есть ли уже аккаунт с таким номером
+    const existingUser = findUserByPhone(tempPhone);
+    if (existingUser) {
+        // Восстанавливаем аккаунт
+        userData = { ...userData, ...existingUser, isVerified: true };
+        saveUserData();
+
+        document.getElementById('register').classList.remove('active');
+        document.getElementById('main').classList.add('active');
+        updateProfile();
+        tg.showAlert('✅ Добро пожаловать обратно!');
+        return;
+    }
+
+    // Новый пользователь — отправляем SMS
     smsCodeGenerated = generateSMSCode();
 
-    // Показываем экран подтверждения
     document.getElementById('register').classList.remove('active');
     document.getElementById('verify').classList.add('active');
     document.getElementById('verifyPhone').textContent = tempPhone;
+    document.getElementById('smsCode').value = ''; // Очищаем поле кода
 
-    // Для теста — показываем код в alert (в продакшене — отправляем SMS)
     console.log('SMS код:', smsCodeGenerated);
 
-    // Отправляем код в Telegram бот для тестирования
     sendToBot('📱 Код подтверждения SMS', {
         Телефон: tempPhone,
         Код: smsCodeGenerated,
@@ -112,6 +174,9 @@ document.getElementById('verifyForm').addEventListener('submit', (e) => {
     userData.isVerified = true;
     saveUserData();
 
+    // Сохраняем в глобальное хранилище (для восстановления)
+    saveUserToGlobal(tempPhone, userData);
+
     document.getElementById('verify').classList.remove('active');
     document.getElementById('main').classList.add('active');
     updateProfile();
@@ -119,6 +184,7 @@ document.getElementById('verifyForm').addEventListener('submit', (e) => {
     sendToBot('🆕 Новая регистрация', {
         Имя: userData.name,
         Телефон: userData.phone,
+        UserID: userData.userId,
         Telegram: tg.initDataUnsafe?.user?.username || 'Не указан'
     });
 
@@ -127,29 +193,74 @@ document.getElementById('verifyForm').addEventListener('submit', (e) => {
 
 function resendCode() {
     smsCodeGenerated = generateSMSCode();
+    document.getElementById('smsCode').value = ''; // Очищаем поле
     console.log('Новый SMS код:', smsCodeGenerated);
     tg.showAlert('Новый код: ' + smsCodeGenerated);
 }
 
 function generateSMSCode() {
-    return Math.floor(1000 + Math.random() * 9000).toString(); // 4 цифры
+    return Math.floor(1000 + Math.random() * 9000).toString();
+}
+
+// ==================== ГЛОБАЛЬНОЕ ХРАНИЛИЩЕ ПОЛЬЗОВАТЕЛЕЙ ====================
+function saveUserToGlobal(phone, data) {
+    const allUsers = JSON.parse(localStorage.getItem('openWatersAllUsers') || '{}');
+    allUsers[phone] = {
+        userId: data.userId,
+        name: data.name,
+        phone: data.phone,
+        visits: data.visits,
+        bonusPoints: data.bonusPoints,
+        freeHours: data.freeHours,
+        spinsAvailable: data.spinsAvailable,
+        totalVisits: data.totalVisits,
+        referralCode: data.referralCode,
+        referredBy: data.referredBy,
+        pendingBonuses: data.pendingBonuses
+    };
+    localStorage.setItem('openWatersAllUsers', JSON.stringify(allUsers));
+}
+
+function findUserByPhone(phone) {
+    const allUsers = JSON.parse(localStorage.getItem('openWatersAllUsers') || '{}');
+    return allUsers[phone] || null;
+}
+
+function restoreUserFromGlobal(phone) {
+    const user = findUserByPhone(phone);
+    if (user) {
+        userData = { ...userData, ...user, isVerified: true };
+        saveUserData();
+        return true;
+    }
+    return false;
 }
 
 // ==================== ВЫХОД ====================
 function logout() {
     tg.showConfirm('Выйти из аккаунта?', (confirmed) => {
         if (confirmed) {
-            // Очищаем данные
+            // Сохраняем данные в глобальное хранилище перед выходом
+            if (userData.phone) {
+                saveUserToGlobal(userData.phone, userData);
+            }
+
+            // Очищаем текущую сессию
             userData = {
                 name: '', phone: '', visits: [], bonusPoints: 0,
                 freeHours: 0, spinsAvailable: 0, totalVisits: 0,
-                referralCode: '', referredBy: null, pendingBonuses: [], isVerified: false
+                referralCode: '', referredBy: null, pendingBonuses: [],
+                isVerified: false, userId: null
             };
             localStorage.removeItem('openWatersUser');
 
+            // Очищаем поля форм
+            document.getElementById('regName').value = '';
+            document.getElementById('regPhone').value = '';
+            document.getElementById('smsCode').value = '';
+
             document.getElementById('main').classList.remove('active');
             document.getElementById('register').classList.add('active');
-            document.getElementById('registerForm').reset();
         }
     });
 }
@@ -165,7 +276,7 @@ function setupEventListeners() {
         });
     });
 
-    ['bookDate', 'bookTime', 'bookDuration', 'extraInstructor', 'extraRescue'].forEach(id => {
+    ['bookDate', 'bookTime', 'bookDuration', 'extraInstructor', 'extraRescue', 'useBonuses'].forEach(id => {
         document.getElementById(id)?.addEventListener('change', updatePrice);
     });
 
@@ -180,6 +291,17 @@ function updateProfile() {
     document.getElementById('freeHours').textContent = userData.freeHours;
     document.getElementById('refLink').value = `https://t.me/openwaters_sup_bot?start=${userData.referralCode}`;
 
+    // Обновление блока бонусов в бронировании
+    const bonusSection = document.getElementById('bonusSection');
+    if (userData.bonusPoints > 0) {
+        bonusSection.style.display = 'block';
+        document.getElementById('availableBonus').textContent = userData.bonusPoints;
+        document.getElementById('bonusRub').textContent = userData.bonusPoints; // 1 балл = 1 рубль
+        document.getElementById('bonusBalance').textContent = userData.bonusPoints + ' ₽';
+    } else {
+        bonusSection.style.display = 'none';
+    }
+
     // Прогресс 5+1
     const visitsMod = userData.totalVisits % 6;
     const progress = visitsMod === 0 && userData.totalVisits > 0 ? 100 : (visitsMod / 5) * 100;
@@ -187,7 +309,7 @@ function updateProfile() {
 
     document.querySelectorAll('.step').forEach((step, i) => {
         if (visitsMod === 0 && userData.totalVisits > 0) {
-            step.classList.toggle('active', i === 5); // Все 5 сделаны, подарок активен
+            step.classList.toggle('active', i === 5);
         } else {
             step.classList.toggle('active', i < visitsMod);
         }
@@ -233,7 +355,7 @@ function updateWheelState() {
     btn.style.opacity = userData.spinsAvailable <= 0 ? '0.5' : '1';
 }
 
-// ==================== КОЛЕСО УДАЧИ (ИСПРАВЛЕННОЕ) ====================
+// ==================== КОЛЕСО УДАЧИ ====================
 let isSpinning = false;
 let currentRotation = 0;
 
@@ -250,31 +372,22 @@ function spinWheel() {
     resultEl.textContent = '';
     resultEl.style.background = 'rgba(255,255,255,0.9)';
 
-    // Призы: индекс = позиция в массиве, соответствует CSS-сегменту
     const prizes = [
-        { name: '50 баллов', value: 50, type: 'points' },      // 0 — верхний сегмент (0-45°)
-        { name: 'Скидка 10%', value: 10, type: 'discount' },   // 1 — 45-90°
-        { name: '100 баллов', value: 100, type: 'points' },    // 2 — 90-135°
-        { name: 'Бесплатный час!', value: 1, type: 'freeHour' }, // 3 — 135-180°
-        { name: 'Скидка 20%', value: 20, type: 'discount' },  // 4 — 180-225°
-        { name: '200 баллов', value: 200, type: 'points' },   // 5 — 225-270°
-        { name: 'Мерч 🧢', value: 1, type: 'merch' },         // 6 — 270-315°
-        { name: 'Попробуй ещё', value: 0, type: 'none' }      // 7 — 315-360°
+        { name: '50 баллов', value: 50, type: 'points' },
+        { name: 'Скидка 10%', value: 10, type: 'discount' },
+        { name: '100 баллов', value: 100, type: 'points' },
+        { name: 'Бесплатный час!', value: 1, type: 'freeHour' },
+        { name: 'Скидка 20%', value: 20, type: 'discount' },
+        { name: '200 баллов', value: 200, type: 'points' },
+        { name: 'Мерч 🧢', value: 1, type: 'merch' },
+        { name: 'Попробуй ещё', value: 0, type: 'none' }
     ];
 
-    // Случайный выбор
     const prizeIndex = Math.floor(Math.random() * prizes.length);
     const prize = prizes[prizeIndex];
 
-    // Расчёт угла вращения
-    // Указатель вверху (0°). Колесо крутится ПРОТИВ часовой стрелки (отрицательный угол)
-    // Чтобы сегмент с индексом prizeIndex оказался сверху:
-    // Нужно повернуть так, чтобы начало сегмента (prizeIndex * 45°) оказалось на 0°
-    // Угол = -(360 - prizeIndex * 45) = -(360 - prizeIndex * 45)
-    // Добавляем полные обороты (5-7) и случайное смещение внутри сегмента (5-40°)
-
-    const fullSpins = 5 + Math.floor(Math.random() * 3); // 5-7 оборотов
-    const segmentOffset = 5 + Math.random() * 35; // Смещение внутри сегмента (5°-40° от начала)
+    const fullSpins = 5 + Math.floor(Math.random() * 3);
+    const segmentOffset = 5 + Math.random() * 35;
     const targetAngle = (fullSpins * 360) + (prizeIndex * 45) + segmentOffset;
 
     currentRotation = targetAngle;
@@ -299,7 +412,6 @@ function handlePrize(prize) {
             });
             msg = `🎉 ${prize.name}! Ожидают подтверждения: +${prize.value} баллов`;
             break;
-
         case 'discount':
             userData.pendingBonuses.push({
                 type: 'discount', value: prize.value,
@@ -307,7 +419,6 @@ function handlePrize(prize) {
             });
             msg = `🎉 Скидка ${prize.value}%! Активируется администратором`;
             break;
-
         case 'freeHour':
             userData.pendingBonuses.push({
                 type: 'freeHour', value: 1,
@@ -315,12 +426,10 @@ function handlePrize(prize) {
             });
             msg = `🎉 Бесплатный час! Активируется при следующем визите`;
             break;
-
         case 'merch':
             msg = `🎉 Мерч Open Waters! Покажите это окно на точке 🧢`;
             bgColor = '#FFF3E0';
             break;
-
         case 'none':
             msg = `😅 Попробуйте в следующий раз!`;
             bgColor = '#FFEBEE';
@@ -334,8 +443,7 @@ function handlePrize(prize) {
     sendToBot('🎰 Колесо удачи', {
         Пользователь: userData.name,
         Телефон: userData.phone,
-        Выигрыш: prize.name,
-        Тип: prize.type
+        Выигрыш: prize.name
     });
 }
 
@@ -347,6 +455,15 @@ function changeCount(delta) {
     updatePrice();
 }
 
+// ==================== ВРЕМЯ (интервал 1 час) ====================
+function initTimeSlots() {
+    const select = document.getElementById('bookTime');
+    for (let h = 10; h <= 20; h++) {
+        select.add(new Option(`${h}:00`, `${h}:00`));
+    }
+    document.getElementById('bookDate').min = new Date().toISOString().split('T')[0];
+}
+
 // ==================== РАСЧЁТ ЦЕНЫ ====================
 function updatePrice() {
     const date = document.getElementById('bookDate').value;
@@ -354,12 +471,14 @@ function updatePrice() {
     const count = parseInt(document.getElementById('supCount').textContent) || 1;
     const instructor = document.getElementById('extraInstructor').checked;
     const rescue = document.getElementById('extraRescue').checked;
+    const useBonuses = document.getElementById('useBonuses')?.checked || false;
 
     if (!date) {
         ['priceSup', 'priceExtras', 'priceTotal'].forEach(id => {
             document.getElementById(id).textContent = '0 ₽';
         });
         document.getElementById('freeHourRow').style.display = 'none';
+        document.getElementById('bonusRow').style.display = 'none';
         return;
     }
 
@@ -390,23 +509,27 @@ function updatePrice() {
         document.getElementById('freeHourRow').style.display = 'none';
     }
 
-    const total = Math.max(0, supPrice + extrasPrice - freeHourDiscount);
+    // Списание бонусов
+    let bonusDiscount = 0;
+    if (useBonuses && userData.bonusPoints > 0) {
+        const subtotal = supPrice + extrasPrice - freeHourDiscount;
+        bonusDiscount = Math.min(userData.bonusPoints, subtotal);
+        document.getElementById('bonusRow').style.display = 'flex';
+        document.getElementById('bonusDiscount').textContent = '-' + bonusDiscount.toLocaleString() + ' ₽';
+    } else {
+        document.getElementById('bonusRow').style.display = 'none';
+    }
+
+    const total = Math.max(0, supPrice + extrasPrice - freeHourDiscount - bonusDiscount);
 
     document.getElementById('priceSup').textContent = supPrice.toLocaleString() + ' ₽';
     document.getElementById('priceExtras').textContent = extrasPrice.toLocaleString() + ' ₽';
     document.getElementById('priceTotal').textContent = total.toLocaleString() + ' ₽';
 }
 
-function initTimeSlots() {
-    const select = document.getElementById('bookTime');
-    for (let h = 10; h <= 20; h++) {
-        select.add(new Option(`${h}:00`, `${h}:00`));
-        if (h < 20) select.add(new Option(`${h}:30`, `${h}:30`));
-    }
-    document.getElementById('bookDate').min = new Date().toISOString().split('T')[0];
-}
+// ==================== БРОНИРОВАНИЕ ====================
+let currentBooking = null;
 
-// ==================== БРОНИРОВАНИЕ (ИСПРАВЛЕННОЕ) ====================
 function handleBooking(e) {
     e.preventDefault();
 
@@ -417,6 +540,7 @@ function handleBooking(e) {
     const instructor = document.getElementById('extraInstructor').checked;
     const rescue = document.getElementById('extraRescue').checked;
     const notes = document.getElementById('bookNotes').value;
+    const useBonuses = document.getElementById('useBonuses')?.checked || false;
 
     if (!date || !time) {
         tg.showAlert('Выберите дату и время');
@@ -445,10 +569,17 @@ function handleBooking(e) {
         freeHourDiscount = hourPrice * count;
     }
 
-    const total = Math.max(0, supPrice + extrasPrice - freeHourDiscount);
+    let bonusDiscount = 0;
+    let bonusUsed = 0;
+    if (useBonuses && userData.bonusPoints > 0) {
+        const subtotal = supPrice + extrasPrice - freeHourDiscount;
+        bonusDiscount = Math.min(userData.bonusPoints, subtotal);
+        bonusUsed = bonusDiscount;
+    }
 
-    // Создаём объект бронирования
-    const booking = {
+    const total = Math.max(0, supPrice + extrasPrice - freeHourDiscount - bonusDiscount);
+
+    currentBooking = {
         date: `${date} ${time}`,
         duration: duration,
         supCount: count,
@@ -456,65 +587,106 @@ function handleBooking(e) {
         rescue: rescue,
         notes: notes,
         price: total,
+        originalPrice: supPrice + extrasPrice,
         isFree: isSixthVisit,
         freeHourDiscount: freeHourDiscount,
+        bonusUsed: bonusUsed,
         status: 'pending',
         timestamp: new Date().toISOString()
     };
 
-    // Добавляем в историю (НЕ увеличиваем totalVisits — это делает админ при подтверждении)
-    userData.visits.push(booking);
+    // Показываем модалку оплаты
+    showPaymentModal(total, `${date} ${time}, ${duration}ч, ${count} SUP`);
+}
 
-    // +1 прокрутка колеса (даётся за создание заявки)
+// ==================== ОПЛАТА ====================
+function showPaymentModal(amount, description) {
+    document.getElementById('paymentAmount').textContent = amount.toLocaleString() + ' ₽';
+    document.getElementById('paymentDesc').textContent = description;
+    document.getElementById('paymentModal').classList.add('active');
+}
+
+function closePaymentModal() {
+    document.getElementById('paymentModal').classList.remove('active');
+}
+
+function processPayment(method) {
+    closePaymentModal();
+
+    if (!currentBooking) return;
+
+    if (method === 'cash') {
+        // Оплата на месте — заявка в ожидании
+        finalizeBooking('cash');
+        tg.showAlert('✅ Заявка создана! Оплатите на месте при arrival.');
+    } else {
+        // Имитация онлайн-оплаты
+        tg.showConfirm(`Оплатить ${currentBooking.price.toLocaleString()} ₽?`, (confirmed) => {
+            if (confirmed) {
+                finalizeBooking(method);
+                tg.showAlert('✅ Оплата прошла успешно! Бронирование подтверждено.');
+            }
+        });
+    }
+}
+
+function finalizeBooking(paymentMethod) {
+    if (!currentBooking) return;
+
+    // Списываем бонусы если использовались
+    if (currentBooking.bonusUsed > 0) {
+        userData.bonusPoints -= currentBooking.bonusUsed;
+    }
+
+    // Добавляем в историю
+    userData.visits.push(currentBooking);
+
+    // +1 прокрутка колеса
     userData.spinsAvailable++;
 
     saveUserData();
+    saveUserToGlobal(userData.phone, userData);
     updateProfile();
 
     // Отправка в бот
     sendToBot('📅 НОВАЯ ЗАЯВКА', {
         '👤 Имя': userData.name,
         '📱 Телефон': userData.phone,
-        '📅 Дата': `${date} в ${time}`,
-        '⏱ Длительность': `${duration} час(а)`,
-        '🏄 SUP': `${count} шт.`,
-        '🎯 Инструктор': instructor ? 'Да' : 'Нет',
-        '🛟 Спасатели': rescue ? 'Да' : 'Нет',
-        '📝 Пожелания': notes || 'Нет',
-        '💰 Сумма': `${total.toLocaleString()} ₽`,
-        '🎁 Бонус': isSixthVisit ? `1 час бесплатно (-${freeHourDiscount.toLocaleString()} ₽)` : 'Нет',
+        '📅 Дата': currentBooking.date,
+        '⏱ Длительность': `${currentBooking.duration} час(а)`,
+        '🏄 SUP': `${currentBooking.supCount} шт.`,
+        '🎯 Инструктор': currentBooking.instructor ? 'Да' : 'Нет',
+        '🛟 Спасатели': currentBooking.rescue ? 'Да' : 'Нет',
+        '📝 Пожелания': currentBooking.notes || 'Нет',
+        '💰 Сумма': `${currentBooking.price.toLocaleString()} ₽`,
+        '💳 Оплата': paymentMethod === 'cash' ? 'На месте' : 'Онлайн',
+        '🎁 Бонус': currentBooking.isFree ? `1 час бесплатно (-${currentBooking.freeHourDiscount.toLocaleString()} ₽)` : 'Нет',
+        '💎 Бонусы списано': currentBooking.bonusUsed > 0 ? `${currentBooking.bonusUsed} баллов` : 'Нет',
         '⏳ Статус': 'ОЖИДАЕТ ПОДТВЕРЖДЕНИЯ АДМИНОМ'
     });
-
-    // Показываем alert
-    tg.showAlert(
-        isSixthVisit 
-            ? '🎉 Заявка отправлена! У вас 1 час бесплатно! Администратор подтвердит бронирование.'
-            : '✅ Заявка отправлена! Администратор подтвердит бронирование.'
-    );
 
     // Сброс формы
     document.getElementById('bookingForm').reset();
     document.getElementById('supCount').textContent = '1';
     updatePrice();
+    currentBooking = null;
 }
 
 // ==================== ПОДТВЕРЖДЕНИЕ АДМИНОМ ====================
-// Эту функцию вызывает админ через бота
 function adminConfirmVisit(visitIndex) {
     const visit = userData.visits[visitIndex];
     if (!visit || visit.status !== 'pending') return false;
 
     visit.status = 'confirmed';
-    userData.totalVisits++; // Увеличиваем счётчик только при подтверждении
+    userData.totalVisits++;
 
     if (visit.isFree) {
         userData.freeHours++;
     }
 
-    // Начисляем бонусы за бронирование (10% от суммы)
+    // 5% бонусов от суммы бронирования
     if (!visit.isFree && visit.price > 0) {
-        const bonus = Math.floor(visit.price * 0.1);
+        const bonus = Math.floor(visit.originalPrice * 0.05);
         userData.bonusPoints += bonus;
     }
 
@@ -527,7 +699,6 @@ function adminConfirmVisit(visitIndex) {
         userData.bonusPoints += b.value;
     });
 
-    // Начисляем ожидающие бесплатные часы
     const pendingHours = userData.pendingBonuses.filter(
         b => b.status === 'pending' && b.type === 'freeHour'
     );
@@ -537,12 +708,13 @@ function adminConfirmVisit(visitIndex) {
     });
 
     saveUserData();
+    saveUserToGlobal(userData.phone, userData);
     updateProfile();
 
     return true;
 }
 
-// ==================== РЕФЕРАЛКА ====================
+// ==================== РЕФЕРАЛКА (+300) ====================
 function copyRefLink() {
     const input = document.getElementById('refLink');
     input.select();
@@ -552,11 +724,11 @@ function copyRefLink() {
 
 function shareRef() {
     const link = document.getElementById('refLink').value;
-    const text = `🏄 Катайся на SUP в Строгино! Open Waters 🌊\nПриходи по моей ссылке и получи бонусы!`;
+    const text = `🏄 Катайся на SUP в Строгино! Open Waters 🌊\nПриходи по моей ссылке и получи +300 бонусов!`;
     tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`);
 }
 
-// ==================== МОДАЛКА ====================
+// ==================== МОДАЛКИ ====================
 function showCorporate() { 
     document.getElementById('corporateModal').classList.add('active'); 
 }
@@ -575,7 +747,6 @@ function loadUserData() {
         try {
             const parsed = JSON.parse(saved);
             userData = { ...userData, ...parsed };
-            // Миграция старых данных
             if (userData.freeSupCount && !userData.freeHours) {
                 userData.freeHours = userData.freeSupCount;
             }
@@ -593,6 +764,7 @@ function sendToBot(title, data) {
         user: {
             name: userData.name,
             phone: userData.phone,
+            userId: userData.userId,
             telegramId: tg.initDataUnsafe?.user?.id
         },
         timestamp: new Date().toISOString()
