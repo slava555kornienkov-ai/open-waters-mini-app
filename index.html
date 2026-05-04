@@ -11,7 +11,7 @@
 </head>
 <body>
     <div id="app">
-        <!-- ЭКРАН ЗАГРУЗКИ (короткий, 1.5 сек) -->
+        <!-- ЗАГРУЗКА -->
         <div id="loading" class="screen active">
             <div class="loading-content">
                 <div class="logo">🌊</div>
@@ -33,14 +33,14 @@
                     </div>
                     <div class="input-group">
                         <label>Номер телефона</label>
-                        <input type="tel" id="regPhone" placeholder="+7 (999) 000-00-00" required autocomplete="tel" maxlength="18">
+                        <input type="tel" id="regPhone" placeholder="+7 (999) 999-99-99" required autocomplete="tel" maxlength="18">
                     </div>
                     <button type="submit" class="btn-primary">Получить код</button>
                 </form>
             </div>
         </div>
 
-        <!-- ПОДТВЕРЖДЕНИЕ SMS -->
+        <!-- SMS ПОДТВЕРЖДЕНИЕ -->
         <div id="verify" class="screen">
             <div class="card">
                 <div class="logo">📱</div>
@@ -116,7 +116,7 @@
 
                 <div class="referral-section">
                     <h3>🎁 Приведи друга</h3>
-                    <p>+500 бонусов за каждого друга</p>
+                    <p>+300 бонусов за каждого друга</p>
                     <div class="referral-box">
                         <input type="text" id="refLink" readonly>
                         <button class="btn-copy" onclick="copyRefLink()">📋</button>
@@ -127,25 +127,67 @@
                 <button class="btn-logout" onclick="logout()">🚪 Выйти</button>
             </div>
 
-            <!-- КОЛЕСО УДАЧИ (CSS-версия, надёжная) -->
+            <!-- КОЛЕСО УДАЧИ -->
             <div id="tab-wheel" class="tab-content">
                 <div class="wheel-section">
                     <h3>🎰 Колесо удачи</h3>
                     <p id="spinsLeft">Осталось прокруток: 0</p>
 
-                    <div class="wheel-outer">
+                    <div class="wheel-container">
                         <div class="wheel-pointer">▼</div>
-                        <div class="wheel-inner" id="wheel">
-                            <div class="slice" data-index="0"><span>50 баллов</span></div>
-                            <div class="slice" data-index="1"><span>Скидка<br>10%</span></div>
-                            <div class="slice" data-index="2"><span>100 баллов</span></div>
-                            <div class="slice" data-index="3"><span>Бесплатный<br>час</span></div>
-                            <div class="slice" data-index="4"><span>Скидка<br>20%</span></div>
-                            <div class="slice" data-index="5"><span>200 баллов</span></div>
-                            <div class="slice" data-index="6"><span>Мерч 🧢</span></div>
-                            <div class="slice" data-index="7"><span>Попробуй<br>ещё</span></div>
+                        <div class="wheel" id="wheel">
+                            <div class="wheel-slice" data-index="0">
+                                <div class="slice-content">
+                                    <span class="slice-icon">💎</span>
+                                    <span class="slice-text">50 баллов</span>
+                                </div>
+                            </div>
+                            <div class="wheel-slice" data-index="1">
+                                <div class="slice-content">
+                                    <span class="slice-icon">🏷️</span>
+                                    <span class="slice-text">Скидка 10%</span>
+                                </div>
+                            </div>
+                            <div class="wheel-slice" data-index="2">
+                                <div class="slice-content">
+                                    <span class="slice-icon">💎</span>
+                                    <span class="slice-text">100 баллов</span>
+                                </div>
+                            </div>
+                            <div class="wheel-slice" data-index="3">
+                                <div class="slice-content">
+                                    <span class="slice-icon">🎁</span>
+                                    <span class="slice-text">Бесплатный час</span>
+                                </div>
+                            </div>
+                            <div class="wheel-slice" data-index="4">
+                                <div class="slice-content">
+                                    <span class="slice-icon">🏷️</span>
+                                    <span class="slice-text">Скидка 20%</span>
+                                </div>
+                            </div>
+                            <div class="wheel-slice" data-index="5">
+                                <div class="slice-content">
+                                    <span class="slice-icon">💎</span>
+                                    <span class="slice-text">200 баллов</span>
+                                </div>
+                            </div>
+                            <div class="wheel-slice" data-index="6">
+                                <div class="slice-content">
+                                    <span class="slice-icon">🧢</span>
+                                    <span class="slice-text">Мерч</span>
+                                </div>
+                            </div>
+                            <div class="wheel-slice" data-index="7">
+                                <div class="slice-content">
+                                    <span class="slice-icon">😅</span>
+                                    <span class="slice-text">Попробуй ещё</span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="wheel-center">🌊</div>
+                        <div class="wheel-center">
+                            <span>🌊</span>
+                        </div>
                     </div>
 
                     <button class="btn-primary btn-wheel" id="spinBtn" onclick="spinWheel()">🎲 Крутить</button>
@@ -175,7 +217,12 @@
                                 <option value="2">2 часа</option>
                                 <option value="3">3 часа</option>
                                 <option value="4">4 часа</option>
-                                <option value="5">5+ часов</option>
+                                <option value="5">5 часов</option>
+                                <option value="6">6 часов</option>
+                                <option value="7">7 часов</option>
+                                <option value="8">8 часов</option>
+                                <option value="9">9 часов</option>
+                                <option value="10">10 часов</option>
                             </select>
                         </div>
                         <div class="input-group">
@@ -207,6 +254,20 @@
                             </label>
                         </div>
 
+                        <!-- СПИСАНИЕ БОНУСОВ -->
+                        <div class="bonus-section" id="bonusSection" style="display:none;">
+                            <h4>💎 Использовать бонусы</h4>
+                            <label class="checkbox-label bonus-label">
+                                <input type="checkbox" id="useBonuses" onchange="updatePrice()">
+                                <span class="checkmark"></span>
+                                <div class="extra-info">
+                                    <span>Списать бонусы</span>
+                                    <span class="extra-price" id="bonusBalance">0 ₽</span>
+                                </div>
+                            </label>
+                            <p class="bonus-hint">Доступно: <span id="availableBonus">0</span> баллов = <span id="bonusRub">0</span> ₽</p>
+                        </div>
+
                         <div class="input-group">
                             <label>Пожелания</label>
                             <textarea id="bookNotes" placeholder="Например: нужен спасатель, первый раз на SUP..."></textarea>
@@ -224,6 +285,10 @@
                             <div class="price-row" id="freeHourRow" style="display:none;color:var(--success);">
                                 <span>🎁 Бесплатный час:</span>
                                 <span id="freeHourDiscount">-0 ₽</span>
+                            </div>
+                            <div class="price-row" id="bonusRow" style="display:none;color:var(--primary-dark);">
+                                <span>💎 Бонусы:</span>
+                                <span id="bonusDiscount">-0 ₽</span>
                             </div>
                             <div class="price-row total">
                                 <span>Итого:</span>
@@ -254,7 +319,7 @@
             </div>
         </div>
 
-        <!-- МОДАЛЬНОЕ ОКНО -->
+        <!-- МОДАЛКА КОРПОРАТИВОВ -->
         <div id="corporateModal" class="modal">
             <div class="modal-content">
                 <span class="close" onclick="closeModal()">&times;</span>
@@ -273,6 +338,35 @@
                 </ul>
                 <p class="corporate-note">Детали обсуждаются индивидуально</p>
                 <button class="btn-primary" onclick="closeModal()">Понятно</button>
+            </div>
+        </div>
+
+        <!-- МОДАЛКА ОПЛАТЫ -->
+        <div id="paymentModal" class="modal">
+            <div class="modal-content payment-content">
+                <h3>💳 Оплата бронирования</h3>
+                <div class="payment-details">
+                    <div class="payment-row">
+                        <span>Бронирование:</span>
+                        <span id="paymentDesc">SUP аренда</span>
+                    </div>
+                    <div class="payment-row total">
+                        <span>Сумма к оплате:</span>
+                        <span id="paymentAmount">0 ₽</span>
+                    </div>
+                </div>
+                <div class="payment-methods">
+                    <button class="btn-payment" onclick="processPayment('card')">
+                        <span>💳</span> Банковская карта
+                    </button>
+                    <button class="btn-payment" onclick="processPayment('sbp')">
+                        <span>🏦</span> СБП (перевод)
+                    </button>
+                    <button class="btn-payment btn-cash" onclick="processPayment('cash')">
+                        <span>💵</span> Оплатить на месте
+                    </button>
+                </div>
+                <button class="btn-text" onclick="closePaymentModal()">Отмена</button>
             </div>
         </div>
     </div>
