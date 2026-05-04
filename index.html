@@ -2,25 +2,17 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <title>Open Waters</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="stylesheet" href="style.css">
+<base target="_blank">
 </head>
 <body>
     <div id="app">
-        <!-- ЗАСТАВКА -->
-        <div id="splash" class="screen active">
-            <div class="splash-content">
-                <div class="logo">🌊</div>
-                <h1>Open Waters</h1>
-                <p>Аренда SUP в Строгино</p>
-                <div class="loader"></div>
-            </div>
-        </div>
-
         <!-- РЕГИСТРАЦИЯ -->
-        <div id="register" class="screen">
+        <div id="register" class="screen active">
             <div class="card">
                 <div class="logo">🌊</div>
                 <h2>Добро пожаловать!</h2>
@@ -28,11 +20,11 @@
                 <form id="registerForm">
                     <div class="input-group">
                         <label>Ваше имя</label>
-                        <input type="text" id="regName" placeholder="Иван" required>
+                        <input type="text" id="regName" placeholder="Иван" required autocomplete="name">
                     </div>
                     <div class="input-group">
                         <label>Номер телефона</label>
-                        <input type="tel" id="regPhone" placeholder="+7 (999) 000-00-00" required>
+                        <input type="tel" id="regPhone" placeholder="+7 (999) 000-00-00" required autocomplete="tel">
                     </div>
                     <button type="submit" class="btn-primary">Начать приключение</button>
                 </form>
@@ -67,14 +59,14 @@
                         <span class="stat-label">Посещений</span>
                     </div>
                     <div class="stat-card highlight">
-                        <span class="stat-value" id="freeSup">0</span>
-                        <span class="stat-label">Бесплатных SUP</span>
+                        <span class="stat-value" id="freeHours">0</span>
+                        <span class="stat-label">Бесплатных часов</span>
                     </div>
                 </div>
 
                 <div class="progress-section">
                     <h3>🎯 Программа лояльности</h3>
-                    <p>5 посещений = 6-е бесплатно</p>
+                    <p>5 посещений = 1 час бесплатно</p>
                     <div class="progress-bar">
                         <div class="progress-fill" id="progressFill"></div>
                     </div>
@@ -111,19 +103,22 @@
                 <div class="wheel-section">
                     <h3>🎰 Колесо удачи</h3>
                     <p id="spinsLeft">Осталось прокруток: 0</p>
-                    <div class="wheel-container">
+
+                    <div class="wheel-wrapper">
                         <div class="wheel-pointer">▼</div>
                         <div class="wheel" id="wheel">
-                            <div class="wheel-segment" style="--i:0"><span>50 баллов</span></div>
-                            <div class="wheel-segment" style="--i:1"><span>Скидка 10%</span></div>
-                            <div class="wheel-segment" style="--i:2"><span>100 баллов</span></div>
-                            <div class="wheel-segment" style="--i:3"><span>Бесплатный час</span></div>
-                            <div class="wheel-segment" style="--i:4"><span>Скидка 20%</span></div>
-                            <div class="wheel-segment" style="--i:5"><span>200 баллов</span></div>
-                            <div class="wheel-segment" style="--i:6"><span>Мерч 🧢</span></div>
-                            <div class="wheel-segment" style="--i:7"><span>Попробуй ещё</span></div>
+                            <div class="wheel-item" data-index="0"><span>50 баллов</span></div>
+                            <div class="wheel-item" data-index="1"><span>Скидка 10%</span></div>
+                            <div class="wheel-item" data-index="2"><span>100 баллов</span></div>
+                            <div class="wheel-item" data-index="3"><span>Бесплатный час</span></div>
+                            <div class="wheel-item" data-index="4"><span>Скидка 20%</span></div>
+                            <div class="wheel-item" data-index="5"><span>200 баллов</span></div>
+                            <div class="wheel-item" data-index="6"><span>Мерч 🧢</span></div>
+                            <div class="wheel-item" data-index="7"><span>Попробуй ещё</span></div>
                         </div>
+                        <div class="wheel-center">🌊</div>
                     </div>
+
                     <button class="btn-primary btn-wheel" id="spinBtn" onclick="spinWheel()">🎲 Крутить</button>
                     <div id="wheelResult" class="wheel-result"></div>
                 </div>
@@ -196,6 +191,10 @@
                             <div class="price-row">
                                 <span>Доп. услуги:</span>
                                 <span id="priceExtras">0 ₽</span>
+                            </div>
+                            <div class="price-row" id="freeHourRow" style="display:none;color:var(--success);">
+                                <span>🎁 Бесплатный час:</span>
+                                <span id="freeHourDiscount">-0 ₽</span>
                             </div>
                             <div class="price-row total">
                                 <span>Итого:</span>
