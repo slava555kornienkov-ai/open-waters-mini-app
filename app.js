@@ -1,205 +1,322 @@
-body{
-  margin:0;
-  font-family:Arial,sans-serif;
-  background:#081521;
-  color:white;
+const tg = window.Telegram.WebApp;
+
+if(tg){
+  tg.ready();
+  tg.expand();
 }
 
-.container{
-  max-width:500px;
-  margin:auto;
-  padding:16px;
+const BOT_USERNAME = 'owstroginobot';
+
+let user = {
+  name:'Гость',
+  username:'',
+  bonus:0,
+  visits:0,
+  spins:1,
+  history:[]
+};
+
+let supCount = 1;
+let spinning = false;
+let rotation = 0;
+
+function init(){
+
+  loadUser();
+  setupTabs();
+  generateTimes();
+  setupEvents();
+  updateUI();
+
 }
 
-.card{
-  background:#102334;
-  border-radius:20px;
-  padding:20px;
-  margin-bottom:16px;
+function loadUser(){
+
+  const tgUser = tg?.initDataUnsafe?.user;
+
+  if(tgUser){
+    user.name = tgUser.first_name || 'Гость';
+    user.username = tgUser.username || '';
+    user.id = tgUser.id;
+  }
+
+  const saved = localStorage.getItem('ow_user');
+
+  if(saved){
+    user = {...user,...JSON.parse(saved)};
+  }
+
+  saveUser();
+
 }
 
-.header{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
+function saveUser(){
+  localStorage.setItem('ow_user',JSON.stringify(user));
 }
 
-.header p{
-  color:#9bb0c1;
+function setupTabs(){
+
+  document.querySelectorAll('.tab').forEach(tab=>{
+
+    tab.addEventListener('click',()=>{
+
+      document.querySelectorAll('.tab').forEach(t=>{
+        t.classList.remove('active');
+      });
+
+      document.querySelectorAll('.tab-content').forEach(c=>{
+        c.classList.remove('active');
+      });
+
+      tab.classList.add('active');
+
+      document
+        .getElementById(tab.dataset.tab + '-tab')
+        .classList.add('active');
+
+    });
+
+  });
+
 }
 
-.bonus-chip{
-  background:#16354f;
-  padding:12px;
-  border-radius:16px;
-  font-weight:bold;
+function generateTimes(){
+
+  const select = document.getElementById('time');
+
+  for(let i=10;i<=21;i++){
+
+    const option = document.createElement('option');
+
+    option.value = `${i}:00`;
+    option.textContent = `${i}:00`;
+
+    select.appendChild(option);
+
+  }
+
 }
 
-.tabs{
-  display:flex;
-  gap:10px;
-  margin:16px 0;
+function setupEvents(){
+
+  ['date','duration','useBonus'].forEach(id=>{
+
+    document
+      .getElementById(id)
+      .addEventListener('change',updatePrice);
+
+  });
+
 }
 
-.tab{
-  flex:1;
-  padding:14px;
-  border:none;
-  border-radius:14px;
-  background:#16354f;
-  color:white;
-  cursor:pointer;
+function updateUI(){
+
+  document.getElementById('bonusBalance').textContent = user.bonus;
+  document.getElementById('bonusBalance2').textContent = user.bonus;
+
+  document.getElementById('profileName').textContent = user.name;
+  document.getElementById('profileBonus').textContent = user.bonus;
+  document.getElementById('profileVisits').textContent = user.visits;
+
+  document.getElementById('refLink').value =
+    `https://t.me/${BOT_USERNAME}?start=${user.id}`;
+
+  renderHistory();
+  updatePrice();
+
 }
 
-.tab.active{
-  background:#1aa8ff;
+function changeSup(value){
+
+  supCount += value;
+
+  if(supCount < 1){
+    supCount = 1;
+  }
+
+  if(supCount > 10){
+    supCount = 10;
+  }
+
+  document.getElementById('supCount').textContent = supCount;
+
+  updatePrice();
+
 }
 
-.tab-content{
-  display:none;
-}
+function updatePrice(){
 
-.tab-content.active{
-  display:block;
-}
-
-input,select{
-  width:100%;
-  margin-top:8px;
-  margin-bottom:16px;
-  padding:14px;
-  border:none;
-  border-radius:14px;
-  background:#183246;
-  color:white;
-  box-sizing:border-box;
-}
-
-.counter{
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  gap:16px;
-  margin-bottom:20px;
-}
-
-.counter button{
-  width:40px;
-  height:40px;
-  border:none;
-  border-radius:10px;
-  background:#1aa8ff;
-  color:white;
-  font-size:20px;
-}
-
-.bonus-box{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:20px;
-}
-
-.price-box{
-  background:#183246;
-  padding:16px;
-  border-radius:16px;
-  margin-bottom:20px;
-}
-
-.price-row{
-  display:flex;
-  justify-content:space-between;
-  margin-bottom:10px;
-}
-
-.total{
-  font-size:22px;
-  font-weight:bold;
-}
-
-.main-btn,
-.secondary-btn{
-  width:100%;
-  padding:16px;
-  border:none;
-  border-radius:16px;
-  background:#1aa8ff;
-  color:white;
-  font-weight:bold;
-  cursor:pointer;
-}
-
-.secondary-btn{
-  margin-top:12px;
-}
-
-.center{
-  text-align:center;
-}
-
-.wheel-wrapper{
-  width:260px;
-  height:260px;
-  margin:20px auto;
-  position:relative;
-}
-
-.pointer{
-  position:absolute;
-  top:-15px;
-  left:50%;
-  transform:translateX(-50%);
-  width:0;
-  height:0;
-  border-left:15px solid transparent;
-  border-right:15px solid transparent;
-  border-top:30px solid #ff5b5b;
-  z-index:10;
-}
-
-.wheel{
-  width:100%;
-  height:100%;
-  border-radius:50%;
-  background:conic-gradient(
-    #00bfff 0deg 45deg,
-    #008cff 45deg 90deg,
-    #00d4ff 90deg 135deg,
-    #00a2ff 135deg 180deg,
-    #00bfff 180deg 225deg,
-    #008cff 225deg 270deg,
-    #00d4ff 270deg 315deg,
-    #00a2ff 315deg 360deg
+  const duration = Number(
+    document.getElementById('duration').value
   );
-  transition:transform 5s cubic-bezier(.17,.67,.15,1);
-  position:relative;
+
+  let total = duration * supCount * 1500;
+
+  const useBonus =
+    document.getElementById('useBonus').checked;
+
+  if(useBonus && user.bonus > 0){
+
+    total -= user.bonus;
+
+    if(total < 0){
+      total = 0;
+    }
+
+  }
+
+  document.getElementById('price').textContent =
+    `${duration * supCount * 1500} ₽`;
+
+  document.getElementById('total').textContent =
+    `${total} ₽`;
+
 }
 
-.wheel-center{
-  position:absolute;
-  top:50%;
-  left:50%;
-  transform:translate(-50%,-50%);
-  width:80px;
-  height:80px;
-  border-radius:50%;
-  background:#081521;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:30px;
+function createBooking(){
+
+  const date = document.getElementById('date').value;
+  const time = document.getElementById('time').value;
+
+  if(!date){
+
+    alert('Выберите дату');
+    return;
+
+  }
+
+  const duration = Number(
+    document.getElementById('duration').value
+  );
+
+  const total = parseInt(
+    document.getElementById('total')
+      .textContent
+      .replace(/\D/g,'')
+  );
+
+  const useBonus =
+    document.getElementById('useBonus').checked;
+
+  if(useBonus){
+
+    user.bonus = 0;
+
+  }
+
+  user.bonus += Math.floor(total * 0.05);
+
+  user.visits += 1;
+  user.spins += 1;
+
+  user.history.push({
+    date:`${date} ${time}`,
+    price:total,
+    duration,
+    sup:supCount
+  });
+
+  saveUser();
+  updateUI();
+
+  alert('Заявка отправлена ✅');
+
 }
 
-.profile-row{
-  display:flex;
-  justify-content:space-between;
-  margin-bottom:14px;
+function renderHistory(){
+
+  const history = document.getElementById('history');
+
+  if(user.history.length === 0){
+
+    history.innerHTML = '<p>История пуста</p>';
+    return;
+
+  }
+
+  history.innerHTML = user.history
+    .slice()
+    .reverse()
+    .map(item=>`
+
+      <div class="history-item">
+        <strong>${item.date}</strong>
+        <br><br>
+        ${item.sup} SUP • ${item.duration} ч
+        <br><br>
+        <strong>${item.price} ₽</strong>
+      </div>
+
+    `)
+    .join('');
+
 }
 
-.history-item{
-  background:#183246;
-  padding:14px;
-  border-radius:14px;
-  margin-bottom:10px;
+function spinWheel(){
+
+  if(spinning){
+    return;
+  }
+
+  if(user.spins <= 0){
+
+    alert('Нет прокруток');
+    return;
+
+  }
+
+  spinning = true;
+
+  user.spins -= 1;
+
+  const wheel = document.getElementById('wheel');
+
+  const prizes = [
+    50,
+    100,
+    150,
+    200,
+    0,
+    300,
+    20,
+    500
+  ];
+
+  const randomIndex =
+    Math.floor(Math.random() * prizes.length);
+
+  const prize = prizes[randomIndex];
+
+  rotation += 360 * 5 + (randomIndex * 45);
+
+  wheel.style.transform = `rotate(${rotation}deg)`;
+
+  setTimeout(()=>{
+
+    user.bonus += prize;
+
+    document.getElementById('wheelResult').textContent =
+      prize === 0
+        ? '😅 Повезет позже'
+        : `💎 +${prize} бонусов`;
+
+    saveUser();
+    updateUI();
+
+    spinning = false;
+
+  },5000);
+
 }
+
+function copyRef(){
+
+  const value = document.getElementById('refLink').value;
+
+  navigator.clipboard.writeText(value);
+
+  alert('Ссылка скопирована');
+
+}
+
+init();
