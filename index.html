@@ -1,384 +1,143 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Open Waters</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Open Waters</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="app">
-        <!-- ЗАГРУЗКА -->
-        <div id="loading" class="screen active">
-            <div class="loading-content">
-                <div class="logo">🌊</div>
-                <h1>Open Waters</h1>
-                <div class="loader"></div>
-            </div>
-        </div>
 
-        <!-- РЕГИСТРАЦИЯ -->
-        <div id="register" class="screen">
-            <div class="card">
-                <div class="logo">🌊</div>
-                <h2>Добро пожаловать!</h2>
-                <p class="subtitle">Зарегистрируйтесь один раз</p>
-                <form id="registerForm">
-                    <div class="input-group">
-                        <label>Ваше имя</label>
-                        <input type="text" id="regName" placeholder="Иван" required autocomplete="name">
-                    </div>
-                    <div class="input-group">
-                        <label>Номер телефона</label>
-                        <input type="tel" id="regPhone" placeholder="+7 (999) 999-99-99" required autocomplete="tel" maxlength="18">
-                    </div>
-                    <button type="submit" class="btn-primary">Получить код</button>
-                </form>
-            </div>
-        </div>
+<div class="container">
 
-        <!-- SMS ПОДТВЕРЖДЕНИЕ -->
-        <div id="verify" class="screen">
-            <div class="card">
-                <div class="logo">📱</div>
-                <h2>Подтверждение</h2>
-                <p class="subtitle">Введите код из SMS</p>
-                <form id="verifyForm">
-                    <div class="input-group">
-                        <label>Код подтверждения</label>
-                        <input type="text" id="smsCode" placeholder="1234" required maxlength="4" inputmode="numeric">
-                    </div>
-                    <p class="hint">Код отправлен на <span id="verifyPhone"></span></p>
-                    <button type="submit" class="btn-primary">Подтвердить</button>
-                    <button type="button" class="btn-text" onclick="resendCode()">Отправить код повторно</button>
-                </form>
-            </div>
-        </div>
-
-        <!-- ГЛАВНЫЙ ЭКРАН -->
-        <div id="main" class="screen">
-            <div class="header">
-                <div class="header-info">
-                    <h1>Open Waters</h1>
-                    <span class="status">🟢 Работаем с 10:00 до 21:00</span>
-                </div>
-                <div class="user-avatar" id="userAvatar">👤</div>
-            </div>
-
-            <div class="nav-tabs">
-                <button class="nav-tab active" data-tab="profile">👤 Профиль</button>
-                <button class="nav-tab" data-tab="wheel">🎰 Колесо</button>
-                <button class="nav-tab" data-tab="book">📅 Бронь</button>
-            </div>
-
-            <!-- ПРОФИЛЬ -->
-            <div id="tab-profile" class="tab-content active">
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <span class="stat-value" id="bonusPoints">0</span>
-                        <span class="stat-label">Бонусов</span>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-value" id="visitCount">0</span>
-                        <span class="stat-label">Посещений</span>
-                    </div>
-                    <div class="stat-card highlight">
-                        <span class="stat-value" id="freeHours">0</span>
-                        <span class="stat-label">Бесплатных часов</span>
-                    </div>
-                </div>
-
-                <div class="progress-section">
-                    <h3>🎯 Программа лояльности</h3>
-                    <p>5 посещений = 1 час бесплатно</p>
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="progressFill"></div>
-                    </div>
-                    <div class="progress-steps" id="progressSteps">
-                        <span class="step">1</span>
-                        <span class="step">2</span>
-                        <span class="step">3</span>
-                        <span class="step">4</span>
-                        <span class="step">5</span>
-                        <span class="step gift">🎁</span>
-                    </div>
-                </div>
-
-                <div class="history-section">
-                    <h3>📋 История посещений</h3>
-                    <div id="visitHistory" class="history-list">
-                        <p class="empty">Пока нет посещений</p>
-                    </div>
-                </div>
-
-                <div class="referral-section">
-                    <h3>🎁 Приведи друга</h3>
-                    <p>+300 бонусов за каждого друга</p>
-                    <div class="referral-box">
-                        <input type="text" id="refLink" readonly>
-                        <button class="btn-copy" onclick="copyRefLink()">📋</button>
-                    </div>
-                    <button class="btn-share" onclick="shareRef()">📤 Поделиться</button>
-                </div>
-
-                <button class="btn-logout" onclick="logout()">🚪 Выйти</button>
-            </div>
-
-            <!-- КОЛЕСО УДАЧИ -->
-            <div id="tab-wheel" class="tab-content">
-                <div class="wheel-section">
-                    <h3>🎰 Колесо удачи</h3>
-                    <p id="spinsLeft">Осталось прокруток: 0</p>
-
-                    <div class="wheel-container">
-                        <div class="wheel-outer-ring">
-                            <div class="wheel-pointer">▼</div>
-                            <div class="wheel" id="wheel">
-                                <div class="wheel-slice" data-index="0">
-                                    <div class="slice-bg" style="--bg:#26C6DA"></div>
-                                    <div class="slice-content">
-                                        <span class="slice-icon">💎</span>
-                                        <span class="slice-text">50<br>баллов</span>
-                                    </div>
-                                </div>
-                                <div class="wheel-slice" data-index="1">
-                                    <div class="slice-bg" style="--bg:#E0F7FA"></div>
-                                    <div class="slice-content">
-                                        <span class="slice-icon">🏷️</span>
-                                        <span class="slice-text">Скидка<br>10%</span>
-                                    </div>
-                                </div>
-                                <div class="wheel-slice" data-index="2">
-                                    <div class="slice-bg" style="--bg:#80DEEA"></div>
-                                    <div class="slice-content">
-                                        <span class="slice-icon">💎</span>
-                                        <span class="slice-text">100<br>баллов</span>
-                                    </div>
-                                </div>
-                                <div class="wheel-slice" data-index="3">
-                                    <div class="slice-bg" style="--bg:#B2EBF2"></div>
-                                    <div class="slice-content">
-                                        <span class="slice-icon">🎁</span>
-                                        <span class="slice-text">Бесплатный<br>час</span>
-                                    </div>
-                                </div>
-                                <div class="wheel-slice" data-index="4">
-                                    <div class="slice-bg" style="--bg:#4DD0E1"></div>
-                                    <div class="slice-content">
-                                        <span class="slice-icon">🏷️</span>
-                                        <span class="slice-text">Скидка<br>20%</span>
-                                    </div>
-                                </div>
-                                <div class="wheel-slice" data-index="5">
-                                    <div class="slice-bg" style="--bg:#26C6DA"></div>
-                                    <div class="slice-content">
-                                        <span class="slice-icon">💎</span>
-                                        <span class="slice-text">200<br>баллов</span>
-                                    </div>
-                                </div>
-                                <div class="wheel-slice" data-index="6">
-                                    <div class="slice-bg" style="--bg:#E0F7FA"></div>
-                                    <div class="slice-content">
-                                        <span class="slice-icon">🧢</span>
-                                        <span class="slice-text">Мерч<br>Open Waters</span>
-                                    </div>
-                                </div>
-                                <div class="wheel-slice" data-index="7">
-                                    <div class="slice-bg" style="--bg:#80DEEA"></div>
-                                    <div class="slice-content">
-                                        <span class="slice-icon">😅</span>
-                                        <span class="slice-text">Попробуй<br>ещё</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="wheel-center">
-                                <span>🌊</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <button class="btn-primary btn-wheel" id="spinBtn" onclick="spinWheel()">🎲 Крутить</button>
-                    <div id="wheelResult" class="wheel-result"></div>
-                </div>
-            </div>
-
-            <!-- БРОНИРОВАНИЕ -->
-            <div id="tab-book" class="tab-content">
-                <div class="booking-section">
-                    <h3>📅 Бронирование SUP</h3>
-                    <form id="bookingForm">
-                        <div class="input-group">
-                            <label>Дата</label>
-                            <input type="date" id="bookDate" required>
-                        </div>
-                        <div class="input-group">
-                            <label>Время начала</label>
-                            <select id="bookTime" required>
-                                <option value="">Выберите время</option>
-                            </select>
-                        </div>
-                        <div class="input-group">
-                            <label>Длительность</label>
-                            <select id="bookDuration" required>
-                                <option value="1">1 час</option>
-                                <option value="2">2 часа</option>
-                                <option value="3">3 часа</option>
-                                <option value="4">4 часа</option>
-                                <option value="5">5 часов</option>
-                                <option value="6">6 часов</option>
-                                <option value="7">7 часов</option>
-                                <option value="8">8 часов</option>
-                                <option value="9">9 часов</option>
-                                <option value="10">10 часов</option>
-                            </select>
-                        </div>
-                        <div class="input-group">
-                            <label>Количество SUP</label>
-                            <div class="counter">
-                                <button type="button" onclick="changeCount(-1)">−</button>
-                                <span id="supCount">1</span>
-                                <button type="button" onclick="changeCount(1)">+</button>
-                            </div>
-                        </div>
-
-                        <div class="extras-section">
-                            <h4>Дополнительные услуги</h4>
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="extraInstructor" data-price="2000">
-                                <span class="checkmark"></span>
-                                <div class="extra-info">
-                                    <span>Инструктор</span>
-                                    <span class="extra-price">2 000 ₽/час</span>
-                                </div>
-                            </label>
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="extraRescue" data-price="2500">
-                                <span class="checkmark"></span>
-                                <div class="extra-info">
-                                    <span>Бригада спасателей</span>
-                                    <span class="extra-price">2 500 ₽/час</span>
-                                </div>
-                            </label>
-                        </div>
-
-                        <!-- БОНУСЫ — ВСЕГДА ВИДНЫ -->
-                        <div class="bonus-section">
-                            <h4>💎 Использовать бонусы</h4>
-                            <label class="checkbox-label bonus-label" id="bonusLabel">
-                                <input type="checkbox" id="useBonuses" onchange="updatePrice()">
-                                <span class="checkmark"></span>
-                                <div class="extra-info">
-                                    <span>Списать бонусы</span>
-                                    <span class="extra-price" id="bonusBalance">0 ₽</span>
-                                </div>
-                            </label>
-                            <p class="bonus-hint">На балансе: <span id="availableBonus">0</span> баллов = <span id="bonusRub">0</span> ₽</p>
-                        </div>
-
-                        <div class="input-group">
-                            <label>Пожелания</label>
-                            <textarea id="bookNotes" placeholder="Например: нужен спасатель, первый раз на SUP..."></textarea>
-                        </div>
-
-                        <div class="price-calc">
-                            <div class="price-row">
-                                <span>Аренда SUP:</span>
-                                <span id="priceSup">0 ₽</span>
-                            </div>
-                            <div class="price-row">
-                                <span>Доп. услуги:</span>
-                                <span id="priceExtras">0 ₽</span>
-                            </div>
-                            <div class="price-row" id="freeHourRow" style="display:none;color:var(--success);">
-                                <span>🎁 Бесплатный час:</span>
-                                <span id="freeHourDiscount">-0 ₽</span>
-                            </div>
-                            <div class="price-row" id="bonusRow" style="display:none;color:var(--primary-dark);">
-                                <span>💎 Бонусы:</span>
-                                <span id="bonusDiscount">-0 ₽</span>
-                            </div>
-                            <div class="price-row total">
-                                <span>Итого:</span>
-                                <span id="priceTotal">0 ₽</span>
-                            </div>
-                        </div>
-
-                        <div class="included">
-                            <h4>✅ Включено в аренду:</h4>
-                            <ul>
-                                <li>SUP-борд</li>
-                                <li>Спасательный жилет</li>
-                                <li>Весло</li>
-                                <li>Водонепроницаемый чехол для телефона</li>
-                                <li>Водонепроницаемый мешок для вещей</li>
-                            </ul>
-                        </div>
-
-                        <button type="submit" class="btn-primary btn-book">📩 Отправить заявку</button>
-                    </form>
-
-                    <div class="corporate-section">
-                        <h4>🏢 Корпоративное мероприятие?</h4>
-                        <p>Аренда площадки от 2 000 ₽/час</p>
-                        <button class="btn-secondary" onclick="showCorporate()">Узнать подробнее</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- МОДАЛКА КОРПОРАТИВОВ -->
-        <div id="corporateModal" class="modal">
-            <div class="modal-content">
-                <span class="close" onclick="closeModal()">&times;</span>
-                <h3>🏢 Корпоративные мероприятия</h3>
-                <div class="corporate-price">2 000 ₽/час</div>
-                <h4>Включено:</h4>
-                <ul>
-                    <li>Полностью арендованная площадка</li>
-                    <li>Выдача и приём SUP-бордов</li>
-                    <li>Помощь в экипировке</li>
-                </ul>
-                <h4>Дополнительно:</h4>
-                <ul>
-                    <li>Инструктор — 2 000 ₽/час</li>
-                    <li>Бригада спасателей — 2 500 ₽/час</li>
-                </ul>
-                <p class="corporate-note">Детали обсуждаются индивидуально</p>
-                <button class="btn-primary" onclick="closeModal()">Понятно</button>
-            </div>
-        </div>
-
-        <!-- МОДАЛКА ОПЛАТЫ -->
-        <div id="paymentModal" class="modal">
-            <div class="modal-content payment-content">
-                <h3>💳 Оплата бронирования</h3>
-                <div class="payment-details">
-                    <div class="payment-row">
-                        <span>Бронирование:</span>
-                        <span id="paymentDesc">SUP аренда</span>
-                    </div>
-                    <div class="payment-row total">
-                        <span>Сумма к оплате:</span>
-                        <span id="paymentAmount">0 ₽</span>
-                    </div>
-                </div>
-                <div class="payment-methods">
-                    <button class="btn-payment" onclick="processPayment('card')">
-                        <span>💳</span> Банковская карта
-                    </button>
-                    <button class="btn-payment" onclick="processPayment('sbp')">
-                        <span>🏦</span> СБП (перевод)
-                    </button>
-                    <button class="btn-payment btn-cash" onclick="processPayment('cash')">
-                        <span>💵</span> Оплатить на месте
-                    </button>
-                </div>
-                <button class="btn-text" onclick="closePaymentModal()">Отмена</button>
-            </div>
-        </div>
+  <div class="header card">
+    <div>
+      <h1>🌊 Open Waters</h1>
+      <p>SUP аренда • Строгино</p>
     </div>
 
-    <script src="app.js"></script>
+    <div class="bonus-chip">
+      💎 <span id="bonusBalance">0</span>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="booking">Бронь</button>
+    <button class="tab" data-tab="wheel">Колесо</button>
+    <button class="tab" data-tab="profile">Профиль</button>
+  </div>
+
+  <div class="tab-content active" id="booking-tab">
+
+    <div class="card">
+      <h2>📅 Бронирование</h2>
+
+      <label>Дата</label>
+      <input type="date" id="date">
+
+      <label>Время</label>
+      <select id="time"></select>
+
+      <label>Длительность</label>
+      <select id="duration">
+        <option value="1">1 час</option>
+        <option value="2">2 часа</option>
+        <option value="3">3 часа</option>
+      </select>
+
+      <label>SUP</label>
+      <div class="counter">
+        <button onclick="changeSup(-1)">-</button>
+        <span id="supCount">1</span>
+        <button onclick="changeSup(1)">+</button>
+      </div>
+
+      <div class="bonus-box">
+        <div>
+          <strong>Использовать бонусы</strong>
+          <p>Баланс: <span id="bonusBalance2">0</span></p>
+        </div>
+
+        <input type="checkbox" id="useBonus">
+      </div>
+
+      <div class="price-box">
+        <div class="price-row">
+          <span>Стоимость</span>
+          <span id="price">0 ₽</span>
+        </div>
+
+        <div class="price-row total">
+          <span>Итого</span>
+          <span id="total">0 ₽</span>
+        </div>
+      </div>
+
+      <button class="main-btn" onclick="createBooking()">
+        Отправить заявку
+      </button>
+    </div>
+  </div>
+
+  <div class="tab-content" id="wheel-tab">
+
+    <div class="card center">
+      <h2>🎰 Колесо удачи</h2>
+
+      <div class="wheel-wrapper">
+
+        <div class="pointer"></div>
+
+        <div class="wheel" id="wheel">
+          <div class="wheel-center">🌊</div>
+        </div>
+      </div>
+
+      <button class="main-btn" onclick="spinWheel()">
+        Крутить
+      </button>
+
+      <p id="wheelResult">Удачи 🍀</p>
+    </div>
+  </div>
+
+  <div class="tab-content" id="profile-tab">
+
+    <div class="card">
+      <h2>👤 Профиль</h2>
+
+      <div class="profile-row">
+        <span>Имя</span>
+        <strong id="profileName"></strong>
+      </div>
+
+      <div class="profile-row">
+        <span>Бонусы</span>
+        <strong id="profileBonus"></strong>
+      </div>
+
+      <div class="profile-row">
+        <span>Посещения</span>
+        <strong id="profileVisits"></strong>
+      </div>
+
+      <input id="refLink" readonly>
+
+      <button class="secondary-btn" onclick="copyRef()">
+        Скопировать реферальную ссылку
+      </button>
+    </div>
+
+    <div class="card">
+      <h2>📋 История</h2>
+      <div id="history"></div>
+    </div>
+
+  </div>
+
+</div>
+
+<script src="app.js"></script>
 </body>
 </html>
